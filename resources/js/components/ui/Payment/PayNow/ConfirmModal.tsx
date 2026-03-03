@@ -1,9 +1,7 @@
-// resources/js/components/ui/ItemLending/Lending/ConfirmModal.tsx
-
 import React from 'react';
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
-import { InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { InformationCircleIcon, ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 interface ConfirmModalProps {
     isOpen: boolean;
@@ -13,7 +11,7 @@ interface ConfirmModalProps {
     message: string;
     confirmText?: string;
     cancelText?: string;
-     variant?: 'destructive' | 'default';
+    variant?: 'danger' | 'success' | 'warning' | 'info';
     isLoading?: boolean;
 }
 
@@ -25,40 +23,46 @@ export const ConfirmModal = ({
     message,
     confirmText = "Ya, Lanjutkan",
     cancelText = "Batal",
-    variant = 'default',
+    variant = 'success',
     isLoading = false
 }: ConfirmModalProps) => {
     
     const variantConfig = {
-        destructive: {
+        danger: {
             icon: <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />,
             bgIcon: "bg-red-100",
-            btn: "bg-red-600 hover:bg-red-700"
+            btn: "bg-red-600 hover:bg-red-700 focus:ring-red-500"
         },
-        default: {
-            icon: <InformationCircleIcon className="w-6 h-6 text-green-600" />,
-            bgIcon: "bg-green-100",
-            btn: "bg-green-600 hover:bg-green-700"
+        success: {
+            icon: <CheckCircleIcon className="w-6 h-6 text-emerald-600" />,
+            bgIcon: "bg-emerald-100",
+            btn: "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
         },
         warning: {
             icon: <ExclamationTriangleIcon className="w-6 h-6 text-amber-600" />,
             bgIcon: "bg-amber-100",
-            btn: "bg-amber-600 hover:bg-amber-700"
+            btn: "bg-amber-600 hover:bg-amber-700 focus:ring-amber-500"
+        },
+        info: {
+            icon: <InformationCircleIcon className="w-6 h-6 text-blue-600" />,
+            bgIcon: "bg-blue-100",
+            btn: "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
         }
     };
 
     const config = variantConfig[variant];
 
     return (
-        // Ubah maxWidth dari "sm" ke "md" untuk memperbaiki error TypeScript
         <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="md">
             <div className="p-1">
                 <div className="flex items-start gap-4 mb-6">
                     <div className={`p-3 rounded-full shrink-0 ${config.bgIcon}`}>
                         {config.icon}
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {message}
+                    <div className="mt-1">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                            {message}
+                        </p>
                     </div>
                 </div>
                 
@@ -72,11 +76,16 @@ export const ConfirmModal = ({
                         {cancelText}
                     </Button>
                     <Button 
-                        className={`flex-1 text-white ${config.btn}`}
+                        className={`flex-1 text-white border-0 ${config.btn}`}
                         onClick={onConfirm}
                         disabled={isLoading}
                     >
-                        {isLoading ? 'Memproses...' : confirmText}
+                        {isLoading ? (
+                            <div className="flex items-center gap-2">
+                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Memproses...
+                            </div>
+                        ) : confirmText}
                     </Button>
                 </div>
             </div>

@@ -36,19 +36,17 @@ export const TransferPaymentContent = ({
             </p>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form id="transfer-upload-form" onSubmit={onSubmit} className="space-y-4">
             <div>
                 <Label className="mb-1">Upload Bukti Bayar</Label>
                 <input
                     type="file"
+                    name="bukti_bayar"
                     className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg p-2 dark:bg-gray-800 dark:text-gray-300 file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                     onChange={(e) => onFileChange(e.target.files?.[0] || null)}
                     required
                 />
             </div>
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg" disabled={processing}>
-                {processing ? 'Mengirim...' : 'Kirim Bukti Pembayaran'}
-            </Button>
         </form>
     </div>
 );

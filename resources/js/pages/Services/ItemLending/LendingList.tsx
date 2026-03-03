@@ -14,6 +14,7 @@ import { useFlashMessages } from '@/hooks/useFlashMessages';
 import { FilterDropdown, FilterItem } from '@/components/FilterDropdown';
 import { Input } from '@/components/ui/input';
 import { Pagination } from '@/components/Pagination';
+import RejectReasonModal from '@/components/ui/RejectReasonModal';
 
 interface Peminjaman {
     id: number;
@@ -50,6 +51,20 @@ interface Props {
 
 export default function LendingList({ peminjamans, filters }: Props) {
     useFlashMessages();
+
+    const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+    const [rejectPayload, setRejectPayload] = useState<{ id: number; action: 'cancel' | 'rejectBack' } | null>(null);
+
+    const openRejectModal = (id: number, action: 'cancel' | 'rejectBack') => {
+        setRejectPayload({ id, action });
+        setIsRejectModalOpen(true);
+    };
+
+    const submitRejectWithReason = (reason: string) => {
+        if (!rejectPayload) return;
+        const routeName = rejectPayload.action === 'cancel' ? route('item-lending.cancel', rejectPayload.id) : route('item-lending.rejectBack', rejectPayload.id);
+        router.post(routeName, { alasan: reason }, { onSuccess: () => { setIsRejectModalOpen(false); setRejectPayload(null); router.reload(); } });
+    };
 
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [search, setSearch] = useState(filters?.search || '');
@@ -220,7 +235,7 @@ export default function LendingList({ peminjamans, filters }: Props) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            onClick={() => router.post(route('item-lending.reject', p.id))}
+                                                            onClick={() => openRejectModal(p.id, 'cancel')}
                                                             className="h-8 w-8 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                                                             title="Tolak"
                                                         >
@@ -242,7 +257,7 @@ export default function LendingList({ peminjamans, filters }: Props) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            onClick={() => router.post(route('item-lending.rejectBack', p.id))}
+                                                            onClick={() => openRejectModal(p.id, 'rejectBack')}
                                                             className="h-8 w-8 text-red-600 hover:bg-red-50"
                                                             title="Tolak Pengembalian"
                                                         >
@@ -275,6 +290,7 @@ export default function LendingList({ peminjamans, filters }: Props) {
                     <Pagination links={peminjamans.links} />
                 </div>
             </div>
+            <RejectReasonModal isOpen={isRejectModalOpen} onClose={() => setIsRejectModalOpen(false)} onSubmit={submitRejectWithReason} />
         </AppLayout>
     );
 }

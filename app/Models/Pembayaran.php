@@ -11,6 +11,7 @@ class Pembayaran extends Model
 
     protected $fillable = [
         'user_id',
+        'nim',
         'nama_pembayar',
         'jenis_pembayaran',
         'kategori',
@@ -18,6 +19,7 @@ class Pembayaran extends Model
         'tanggal_tagihan',
         'status',
         'keterangan',
+        'alasan',
         'tanggal_bayar',
         'id_transaksi',
         'bukti_bayar',
@@ -29,6 +31,8 @@ class Pembayaran extends Model
     protected $casts = [
         'tanggal_tagihan' => 'date',
         'tanggal_bayar' => 'date',
+        'jenis_tagihan' => 'array', // <--- Pastikan ini ada
+        'nominal' => 'float',
     ];
 
     public function user()

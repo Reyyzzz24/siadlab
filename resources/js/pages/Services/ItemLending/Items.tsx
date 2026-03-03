@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import {
@@ -15,6 +15,7 @@ import { FilterDropdown, FilterItem } from '@/components/FilterDropdown';
 import { SearchInput } from '@/components/SearchInput';
 import { items } from '@/routes/item-lending';
 import { Pagination } from '@/components/Pagination';
+import * as XLSX from 'xlsx';
 
 interface Barang {
     idbarang: number;
@@ -72,6 +73,8 @@ export default function Items({ barangs = { data: [], links: [], current_page: 1
     });
 
     const isAdminOrPetugas = ['admin', 'petugas'].includes(auth.user.role);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [importing, setImporting] = useState(false);
 
     const updateData = (newParams: typeof params) => {
         router.get(route('item-lending.items'), newParams, {
@@ -248,12 +251,65 @@ export default function Items({ barangs = { data: [], links: [], current_page: 1
                     {/* Button Tambah: Akan pindah ke bawah Search di mobile */}
                     {isAdminOrPetugas && (
                         <div className="w-full md:w-auto">
-                            <Button
-                                onClick={() => { reset(); setIsEditMode(false); setIsModalOpen(true); }}
-                                className="w-full md:w-auto justify-center" // Full width di mobile
-                            >
-                                <PlusIcon className="w-4 h-4 mr-2" /> Tambah Barang
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="sm" onClick={() => {
+                                    const ws = XLSX.utils.json_to_sheet(barangs.data.map(b => ({
+                                        idbarang: b.idbarang,
+                                        namabarang: b.namabarang,
+                                        kategori: b.kategori,
+                                        status: b.status,
+                                        stok: b.stok,
+                                        hargabarang: b.hargabarang,
+                                        tanggal_masuk: b.tanggal_masuk,
+                                    })));
+                                    const wb = XLSX.utils.book_new();
+                                    XLSX.utils.book_append_sheet(wb, ws, 'Barangs');
+                                    XLSX.writeFile(wb, 'barangs_export.xlsx');
+                                }}>
+                                    Export Excel
+                                </Button>
+
+                                <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    setImporting(true);
+                                    const reader = new FileReader();
+                                    reader.onload = (evt) => {
+                                        const data = evt.target?.result as ArrayBuffer | string;
+                                        const wb = XLSX.read(data, { type: typeof data === 'string' ? 'binary' : 'array' });
+                                        const wsname = wb.SheetNames[0];
+                                        const ws = wb.Sheets[wsname];
+                                        const json: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+                                        Promise.all(json.map(row => new Promise<void>((res) => {
+                                            const payload = {
+                                                namabarang: row.namabarang || row.Nama || row['Nama Barang'] || row.namabarang,
+                                                kategori: row.kategori || row.Kategori || '',
+                                                status: row.status || row.Status || 'available',
+                                                stok: Number(row.stok || row.Stok || 0),
+                                                hargabarang: Number(row.hargabarang || row.Harga || 0),
+                                                tanggal_masuk: row.tanggal_masuk || row['Tanggal Masuk'] || '',
+                                            };
+                                            router.post(route('item-lending.items.store'), payload, {
+                                                onSuccess: () => res(),
+                                                onError: () => res()
+                                            });
+                                        }))).then(() => {
+                                            setImporting(false);
+                                            updateData(params);
+                                            if (fileInputRef.current) fileInputRef.current.value = '';
+                                        });
+                                    };
+                                    reader.readAsArrayBuffer(file);
+                                }} />
+
+                                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                                    Import Excel
+                                </Button>
+
+                                <Button variant="default" size="sm" onClick={() => { reset(); setIsEditMode(false); setIsModalOpen(true); }} className="w-full md:w-auto justify-center"> 
+                                    <PlusIcon className="w-4 h-4 mr-2" /> Tambah Barang
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </div>

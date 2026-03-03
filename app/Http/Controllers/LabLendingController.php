@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use App\Models\NotificationCustom;
 
 class LabLendingController extends Controller
 {
@@ -235,24 +236,20 @@ class LabLendingController extends Controller
     public function storeLab(Request $request)
     {
         $validated = $request->validate([
-            'nama_lab'  => 'required|string|max:255|unique:laboratoriums,nama_lab',
+            // Hapus 'unique:laboratoriums,nama_lab' agar nama bisa sama
+            'nama_lab'  => 'required|string|max:255',
             'lokasi'    => 'nullable|string|max:255',
             'kapasitas' => 'nullable|integer|min:1',
             'status'    => 'nullable|in:available,unavailable',
-        ], [
-            'nama_lab.unique' => 'Nama laboratorium ini sudah terdaftar.'
         ]);
 
-        // 1. Ambil semua ID untuk mencari angka terbesar secara manual
-        // Ini lebih aman daripada orderBy string jika ada data format berantakan seperti 'LAB0-4'
+        // 1. Ambil record terakhir untuk menentukan nomor urut berikutnya
         $lastRecord = Laboratorium::withTrashed()
-            ->where('id_lab', 'like', 'LAB-%') // Pastikan hanya ambil yang formatnya benar
-            ->orderByRaw('CAST(SUBSTRING(id_lab, 5) AS UNSIGNED) DESC') // Urutkan berdasarkan angka setelah 'LAB-'
+            ->where('id_lab', 'like', 'LAB-%')
+            ->orderByRaw('CAST(SUBSTRING(id_lab, 5) AS UNSIGNED) DESC')
             ->first();
 
         if ($lastRecord) {
-            // Karena formatnya 'LAB-001', angka dimulai setelah index ke-4 (karakter ke-5)
-            // Kita pecah berdasarkan tanda '-' untuk lebih aman
             $parts = explode('-', $lastRecord->id_lab);
             $lastNumber = isset($parts[1]) ? (int)$parts[1] : 0;
             $newNumber = $lastNumber + 1;
@@ -260,10 +257,10 @@ class LabLendingController extends Controller
             $newNumber = 1;
         }
 
-        // 2. Format ID baru mengikuti database kamu: LAB-001
+        // 2. Format ID baru: LAB-001
         $newId = 'LAB-' . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
 
-        // 3. Validasi duplikat (termasuk ngecek data LAB0-4 atau data sampah)
+        // 3. Proteksi double-check agar ID benar-benar unik di database
         while (Laboratorium::withTrashed()->where('id_lab', $newId)->exists()) {
             $newNumber++;
             $newId = 'LAB-' . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
@@ -274,7 +271,7 @@ class LabLendingController extends Controller
 
         Laboratorium::create($validated);
 
-        return redirect()->back()->with('success', "Laboratorium $newId berhasil ditambahkan.");
+        return redirect()->back()->with('success', "Laboratorium $newId ($request->nama_lab) berhasil ditambahkan.");
     }
 
     // Update existing lab
@@ -354,7 +351,7 @@ class LabLendingController extends Controller
         if ($pinjam->status !== 'booked') {
             return redirect()->back()->with('error', 'Hanya peminjaman dengan status booked yang bisa dibatalkan.');
         }
-        $pinjam->update(['status' => 'ditolak']);
+        $pinjam->update(['status' => 'selesai']);
         return redirect()->back()->with('success', 'Peminjaman berhasil dibatalkan.');
     }
 
@@ -397,7 +394,7 @@ class LabLendingController extends Controller
     }
 
 
-    public function reject($id)
+    public function reject(Request $request, $id)
     {
         if (!Auth::user() || !in_array(Auth::user()->role, ['admin', 'petugas'])) {
             return redirect()->back()->with('error', 'Izin ditolak.');
@@ -408,7 +405,25 @@ class LabLendingController extends Controller
             return redirect()->back()->with('error', 'Hanya booking yang dapat ditolak.');
         }
 
-        $pinjam->update(['status' => 'ditolak']);
+        $validated = $request->validate([
+            'alasan' => 'nullable|string|max:2000'
+        ]);
+
+        $pinjam->update(['status' => 'ditolak', 'alasan' => $validated['alasan'] ?? null]);
+
+        if ($pinjam->user_id) {
+            NotificationCustom::create([
+                'user_id' => $pinjam->user_id,
+                'type' => 'peminjaman_lab_ditolak',
+                'data' => [
+                    'message' => 'Peminjaman laboratorium Anda ditolak.',
+                    'alasan' => $validated['alasan'] ?? null,
+                    'peminjaman_id' => $pinjam->id,
+                ],
+                'is_read' => false,
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Booking ditolak.');
     }
 
@@ -473,7 +488,7 @@ class LabLendingController extends Controller
         return redirect()->back()->with('success', "Permintaan terkirim untuk {$updated} data.");
     }
 
-    public function rejectBack($id)
+    public function rejectBack(Request $request, $id)
     {
         if (!Auth::user() || !in_array(Auth::user()->role, ['admin', 'petugas'])) {
             return redirect()->back()->with('error', 'Izin ditolak.');
@@ -484,7 +499,25 @@ class LabLendingController extends Controller
             return redirect()->back()->with('error', 'Hanya status proses_kembali yang dapat ditolak.');
         }
 
-        $pinjam->update(['status' => 'dipinjam']);
+        $validated = $request->validate([
+            'alasan' => 'nullable|string|max:2000'
+        ]);
+
+        $pinjam->update(['status' => 'dipinjam', 'alasan' => $validated['alasan'] ?? null]);
+
+        if ($pinjam->user_id) {
+            NotificationCustom::create([
+                'user_id' => $pinjam->user_id,
+                'type' => 'peminjaman_lab_reject_return',
+                'data' => [
+                    'message' => 'Permintaan pengembalian laboratorium Anda ditolak.',
+                    'alasan' => $validated['alasan'] ?? null,
+                    'peminjaman_id' => $pinjam->id,
+                ],
+                'is_read' => false,
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Pengembalian ditolak.');
     }
 }

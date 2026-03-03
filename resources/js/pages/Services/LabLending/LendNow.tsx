@@ -130,16 +130,14 @@ export default function LendNow({ auth, peminjamans = [], laboratoriesAvailable 
         setConfirmConfig({
             isOpen: true,
             title: 'Batalkan Peminjaman',
-            message: 'Tindakan ini tidak dapat dibatalkan. Apakah Anda yakin ingin membatalkan booking ini?',
+            message: 'Anda akan membatalkan peminjaman ini. Lanjutkan?',
             variant: 'destructive',
             onConfirm: () => {
-                // Perhatikan perubahan titik (.) menjadi slash (/) sesuai route list Anda
                 router.post(`/lab-lending/${id}/cancel`, {}, {
                     onSuccess: () => {
-                        closeConfirm(); // Tutup modal konfirmasi
+                        closeConfirm();
                         router.reload();
-                    },
-                    onError: () => alert("Gagal membatalkan peminjaman.")
+                    }
                 });
             }
         });
@@ -215,7 +213,7 @@ export default function LendNow({ auth, peminjamans = [], laboratoriesAvailable 
                         Tambah Peminjaman
                     </Button>
 
-                    {selectedIds.length > 0 && (
+                 {/*    {selectedIds.length > 0 && ( */}
                         <Button
                             variant="default"
                             onClick={handleKembalikanSelected}
@@ -224,7 +222,7 @@ export default function LendNow({ auth, peminjamans = [], laboratoriesAvailable 
                             <ArrowPathRoundedSquareIcon className="w-5 h-5" />
                             Kembalikan ({selectedIds.length})
                         </Button>
-                    )}
+                  {/*   )} */}
                 </div>
 
                 {/* --- DESKTOP TABLE VIEW --- */}
@@ -300,7 +298,7 @@ export default function LendNow({ auth, peminjamans = [], laboratoriesAvailable 
                                 ))
                             ) : (
                                 <Tr>
-                                    <Td colSpan={7} className="text-center py-20 text-gray-400">
+                                    <Td colSpan={8} className="text-center py-20 text-gray-400">
                                         <div className="flex flex-col items-center">
                                             <NoSymbolIcon className="w-10 h-10 mb-2" />
                                             <p>Tidak ada peminjaman aktif</p>
@@ -381,6 +379,8 @@ export default function LendNow({ auth, peminjamans = [], laboratoriesAvailable 
                 variant={confirmConfig.variant}
                 confirmText={confirmConfig.variant === 'destructive' ? 'Ya, Batalkan' : 'Ya, Kembalikan'}
             />
+
+            {/* cancel now uses ConfirmModal; RejectReasonModal removed */}
 
             <Modal
                 isOpen={isAddModalOpen}

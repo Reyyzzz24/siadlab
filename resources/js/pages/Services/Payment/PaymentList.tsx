@@ -36,6 +36,7 @@ interface Pembayaran {
     bukti_bayar?: string;
     keterangan?: string;
     created_at: string;
+    alasan?: string; 
 }
 
 interface Props {
@@ -66,6 +67,7 @@ export default function PaymentList({ payments, filters }: Props) {
     // State untuk Modal Konfirmasi Approve/Reject
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [confirmData, setConfirmData] = useState<{ id: number, status: 'lunas' | 'ditolak' } | null>(null);
+    const [rejectReason, setRejectReason] = useState<string>('');
 
     // State untuk Popover (Opsional jika Anda masih ingin menggunakannya)
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -96,9 +98,17 @@ export default function PaymentList({ payments, filters }: Props) {
             ? route('payment.approve', confirmData.id)
             : route('payment.reject', confirmData.id);
 
-        router.post(url, {}, {
+        const body: any = {};
+        if (confirmData.status === 'ditolak' && rejectReason) {
+            body.alasan = rejectReason;
+        }
+
+        router.post(url, body, {
             preserveScroll: true,
-            onSuccess: () => setIsConfirmModalOpen(false)
+            onSuccess: () => {
+                setIsConfirmModalOpen(false);
+                setRejectReason('');
+            }
         });
     };
 
@@ -264,6 +274,7 @@ export default function PaymentList({ payments, filters }: Props) {
                         <Tr>
                             <Th center className="w-12">No</Th>
                             <Th>Nama Pembayar</Th>
+                            <Th>Alasan</Th>
                             <Th>Jenis & Kategori</Th>
                             <Th>Nominal</Th>
                             <Th>Status</Th>
@@ -279,6 +290,9 @@ export default function PaymentList({ payments, filters }: Props) {
                                     <Td>
                                         <div className="font-medium capitalize">{p.nama_pembayar}</div>
                                         <div className="text-xs text-gray-400">TRX: #{p.id_transaksi || p.id}</div>
+                                    </Td>
+                                    <Td>
+                                        <div className="text-sm text-gray-700 dark:text-gray-200">{p.alasan || '-'}</div>
                                     </Td>
                                     <Td>
                                         <div className="capitalize">{p.kategori.replace('_', ' ')}</div>
@@ -343,7 +357,7 @@ export default function PaymentList({ payments, filters }: Props) {
                             ))
                         ) : (
                             <Tr>
-                                <Td colSpan={7} className="text-center py-20 text-gray-400">
+                                <Td colSpan={8} className="text-center py-20 text-gray-400">
                                     <div className="flex flex-col items-center">
                                         <NoSymbolIcon className="w-10 h-10 mb-2" />
                                         <p>Tidak ada data peminjaman ditemukan</p>
@@ -364,6 +378,8 @@ export default function PaymentList({ payments, filters }: Props) {
                 onClose={() => setIsConfirmModalOpen(false)}
                 onConfirm={executeUpdateStatus}
                 data={confirmData}
+                reason={rejectReason}
+                setReason={setRejectReason}
             />
 
             <NoteDetailModal

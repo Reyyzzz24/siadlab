@@ -8,6 +8,7 @@ import { useFlashMessages } from '@/hooks/useFlashMessages';
 import { FilterDropdown, FilterItem } from '@/components/FilterDropdown';
 import { Input } from '@/components/ui/input';
 import { Pagination } from '@/components/Pagination';
+import RejectReasonModal from '@/components/ui/RejectReasonModal';
 
 interface Peminjaman {
     id: number;
@@ -44,6 +45,18 @@ export default function LendingList({ peminjamans, filters }: Props) {
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [search, setSearch] = useState(filters?.search || '');
     const [params, setParams] = useState({ status: filters?.status || '', search: filters?.search || '' });
+    const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+    const [rejectPayload, setRejectPayload] = useState<{ id: number; path: string } | null>(null);
+
+    const openRejectModal = (id: number, path: string) => {
+        setRejectPayload({ id, path });
+        setIsRejectModalOpen(true);
+    };
+
+    const submitRejectWithReason = (reason: string) => {
+        if (!rejectPayload) return;
+        router.post(rejectPayload.path, { alasan: reason }, { onSuccess: () => { setIsRejectModalOpen(false); setRejectPayload(null); router.reload(); } });
+    };
 
     const updateData = (newParams: any) => {
         router.get(route('lab-lending.list'), newParams, { preserveState: true, preserveScroll: true, replace: true });
@@ -211,7 +224,7 @@ export default function LendingList({ peminjamans, filters }: Props) {
                                                             size="icon"
                                                             variant="ghost"
                                                             className="p-1.5 text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                                                            onClick={() => router.post(actions.rejectPath, {}, { onSuccess: () => router.reload() })}
+                                                            onClick={() => openRejectModal(p.id, actions.rejectPath)}
                                                             title={actions.rejectTitle}
                                                         >
                                                             <XMarkIcon className="w-5 h-5" />
@@ -225,7 +238,7 @@ export default function LendingList({ peminjamans, filters }: Props) {
                             ))
                         ) : (
                             <Tr>
-                                <Td colSpan={7} className="text-center py-20 text-gray-400">
+                                <Td colSpan={8} className="text-center py-20 text-gray-400">
                                     <div className="flex flex-col items-center">
                                         <NoSymbolIcon className="w-10 h-10 mb-2" />
                                         <p>Tidak ada data peminjaman ditemukan</p>
@@ -239,6 +252,7 @@ export default function LendingList({ peminjamans, filters }: Props) {
                     <Pagination links={peminjamans.links} />
                 </div>
             </div>
+            <RejectReasonModal isOpen={isRejectModalOpen} onClose={() => setIsRejectModalOpen(false)} onSubmit={submitRejectWithReason} />
         </AppLayout>
     );
 }

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\SPP;
 use Carbon\Carbon;
+use App\Models\NotificationCustom;
 
 class PaymentController extends Controller
 {
@@ -122,6 +123,7 @@ class PaymentController extends Controller
                     fn($sub) => $sub
                         ->whereHas('user', fn($u) => $u->where('name', 'like', "%$v%"))
                         ->orWhere('id', 'like', "%$v%")
+                        ->orWhere('id_transaksi', 'like', "%$v%")
                         ->orWhere('kategori', 'like', "%$v%")
                 );
             })
@@ -133,6 +135,7 @@ class PaymentController extends Controller
                 'id_transaksi' => $p->id_transaksi,
                 'nama_pembayar' => $p->nama_pembayar ?? $p->user?->name ?? '-',
                 'kategori' => $p->kategori,
+                'alasan' => $p->alasan ?? null,
                 'nominal' => (float) $p->nominal,
                 'status' => $p->status,
                 'tanggal_bayar' => $p->tanggal_bayar,
@@ -194,43 +197,67 @@ class PaymentController extends Controller
         // 1. Ambil data mahasiswa untuk menghitung tagihan aktif di tabel Tagihan
         $mahasiswa = Mahasiswa::where('user_id', $userId)->first();
         $totalNominalTagihan = 0;
+        $tagihans = [];
 
         if ($mahasiswa) {
             // Hitung akumulasi nominal dari tabel Tagihans yang belum dibayar
             $totalNominalTagihan = Tagihan::where('mahasiswa_id', $mahasiswa->id)
                 ->where('status', 'belum_bayar')
                 ->sum('nominal');
+
+            // Ambil Tagihan yang belum dibayar untuk menampilkan jenis_tagihan
+            $tagihans = Tagihan::where('mahasiswa_id', $mahasiswa->id)
+                ->where('status', 'belum_bayar')
+                ->get()
+                ->map(fn($t) => [
+                    'id' => $t->id,
+                    'jenis_tagihan' => is_array($t->jenis_tagihan) ? $t->jenis_tagihan : (json_decode($t->jenis_tagihan, true) ?? []),
+                    'kategori' => $t->kategori ?? null,
+                    'nominal' => (float) $t->nominal,
+                    'tanggal_tagihan' => $t->tanggal_tagihan,
+                ])
+                ->toArray();
         }
 
         // Format Rupiah untuk tampilan Card Header di React
         $totalPembayaran = "Rp " . number_format($totalNominalTagihan, 0, ',', '.');
 
-        // 2. Ambil Riwayat Pembayaran Aktif mahasiswa tersebut
-        // Kita sertakan 'ditolak' agar mahasiswa bisa upload bukti baru jika sebelumnya ditolak admin
-        $pembayarans = Pembayaran::with('user')
+        // 2. Ambil Master Data SPP untuk Dropdown di Modal Tambah Tagihan
+        // Ini digunakan agar frontend bisa mapping: Kategori -> Nominal
+        $listSpp = Spp::where('status', 'aktif')
+            ->select('id', 'kategori_pembayaran', 'nominal')
+            ->get();
+
+        // 3. Ambil Riwayat Pembayaran Aktif mahasiswa tersebut
+        $pembayarans = Pembayaran::with(['user', 'admin', 'petugas'])
             ->where('user_id', $userId)
             ->whereIn('status', ['belum_bayar', 'menunggu_konfirmasi', 'ditolak'])
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(fn($p) => [
                 'id' => $p->id,
-                'id_transaksi' => $p->id_transaksi, // Pastikan field ini ada di model
+                'id_transaksi' => $p->id_transaksi,
                 'nama_pembayar' => $p->nama_pembayar ?? ($p->user ? $p->user->name : '-'),
                 'jenis_pembayaran' => $p->jenis_pembayaran,
+                'alasan' => $p->alasan ?? null,
                 'kategori' => $p->kategori,
+                'jenis_tagihan' => $p->jenis_tagihan, // <--- WAJIB TAMBAHKAN INI
                 'tanggal_tagihan' => $p->tanggal_tagihan,
                 'tanggal_bayar' => $p->tanggal_bayar,
                 'nominal' => (float) $p->nominal,
                 'status' => $p->status,
                 'keterangan' => $p->keterangan,
                 'bukti_bayar' => $p->bukti_bayar,
+                'admin' => $p->admin ? ['id' => $p->admin->id, 'name' => $p->admin->name] : null,
+                'petugas' => $p->petugas ? ['id' => $p->petugas->id, 'name' => $p->petugas->name] : null,
             ]);
 
         return Inertia::render('Services/Payment/PayNow', [
             'pembayarans' => $pembayarans,
+            'tagihans' => $tagihans,
             'totalPembayaran' => $totalPembayaran,
-            // Kirimkan raw nominal jika butuh perhitungan di frontend
-            'rawTotalTagihan' => $totalNominalTagihan
+            'rawTotalTagihan' => $totalNominalTagihan,
+            'listSpp' => $listSpp // <-- Data ini yang akan digunakan dropdown React
         ]);
     }
 
@@ -239,9 +266,15 @@ class PaymentController extends Controller
         $user = Auth::user();
 
         $pembayarans = Pembayaran::with(['user', 'admin', 'petugas'])
+            // 1. Filter utama: HANYA yang berstatus lunas
+            ->where('status', 'lunas')
+
+            // 2. Filter berdasarkan role (User biasa hanya melihat miliknya sendiri)
             ->when($user->role !== 'admin' && $user->role !== 'petugas', function ($q) use ($user) {
                 return $q->where('user_id', $user->id);
             })
+
+            // 3. Fitur Search
             ->when($request->search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('nama_pembayar', 'like', '%' . $search . '%')
@@ -252,18 +285,19 @@ class PaymentController extends Controller
                         });
                 });
             })
-            ->when($request->status, fn($q, $v) => $q->where('status', $v))
+
+            // 4. Filter tambahan (Status dihapus karena sudah dikunci ke 'lunas' di atas)
             ->when($request->kategori, fn($q, $v) => $q->where('kategori', $v))
             ->when($request->jenis_pembayaran, fn($q, $v) => $q->where('jenis_pembayaran', $v))
+
             ->latest()
-            // Gunakan paginate(jumlah_item_per_halaman)
-            // withQueryString() menjaga agar filter ?search=xxx tidak hilang saat ganti halaman
             ->paginate(10)
             ->withQueryString();
 
         return Inertia::render('Services/Payment/History', [
             'pembayarans' => $pembayarans,
-            'filters' => $request->only(['status', 'kategori', 'jenis_pembayaran', 'search'])
+            // Hapus 'status' dari filters yang dikirim ke frontend agar tidak membingungkan
+            'filters' => $request->only(['kategori', 'jenis_pembayaran', 'search'])
         ]);
     }
     public function invoice(Request $request)
@@ -395,6 +429,7 @@ class PaymentController extends Controller
             'jenis_pembayaran' => $request->jenis_pembayaran,
             'status' => 'belum_bayar',
             'tanggal_tagihan' => now(),
+            'keterangan' => $request->keterangan ?? null,
         ]);
         return back()->with('success', 'Data pembayaran berhasil ditambahkan.');
     }
@@ -409,8 +444,33 @@ class PaymentController extends Controller
             'selected_ids.*' => 'exists:pembayarans,id'
         ]);
 
-        Pembayaran::whereIn('id', $request->selected_ids)
-            ->update(['status' => 'menunggu_konfirmasi']);
+        DB::transaction(function () use ($request) {
+            // Update semua pembayaran yang dipilih
+            $pembayarans = Pembayaran::whereIn('id', $request->selected_ids)->get();
+
+            foreach ($pembayarans as $pembayaran) {
+                // Update Pembayaran status ke menunggu_konfirmasi
+                $pembayaran->update([
+                    'status' => 'menunggu_konfirmasi',
+                    'tanggal_bayar' => now(),
+                    'nama_pembayar' => $pembayaran->nama_pembayar ?? Auth::user()->name
+                ]);
+
+                // Update related Tagihan status to menunggu_konfirmasi (hanya jika belum dibayar)
+                if ($pembayaran->nim) {
+                    $mahasiswa = Mahasiswa::where('nim', $pembayaran->nim)->first();
+                    if ($mahasiswa) {
+                        $tagihanAktif = Tagihan::where('mahasiswa_id', $mahasiswa->id)
+                            ->where('status', 'belum_bayar')
+                            ->first();
+
+                        if ($tagihanAktif) {
+                            $tagihanAktif->update(['status' => 'menunggu_konfirmasi']);
+                        }
+                    }
+                }
+            }
+        });
 
         return back()->with('success', 'Permintaan pembayaran berhasil dikirim. Silakan hubungi admin/kasir.');
     }
@@ -421,21 +481,33 @@ class PaymentController extends Controller
     public function transferUpload(Request $request)
     {
         $request->validate([
-            'pembayaran_id' => 'required|exists:pembayarans,id',
             'bukti_bayar' => 'required|image', // max 2MB
         ]);
-
-        $pembayaran = Pembayaran::findOrFail($request->pembayaran_id);
 
         if ($request->hasFile('bukti_bayar')) {
             $path = $request->file('bukti_bayar')->store('bukti_bayar', 'public');
 
-            $pembayaran->update([
-                'bukti_bayar' => $path,
-                'status' => 'menunggu_konfirmasi',
-                'tanggal_bayar' => now(),
-                'nama_pembayar' => $pembayaran->nama_pembayar ?? Auth::user()->name, // fallback jika kosong
-            ]);
+            // Jika ada selected_ids (multiple), update semua
+            if ($request->filled('selected_ids') && is_array($request->selected_ids)) {
+                $ids = $request->selected_ids;
+                $pembayarans = Pembayaran::whereIn('id', $ids)->get();
+                foreach ($pembayarans as $pembayaran) {
+                    $pembayaran->update([
+                        'bukti_bayar' => $path,
+                        'status' => 'menunggu_konfirmasi',
+                        'tanggal_bayar' => now(),
+                        'nama_pembayar' => $pembayaran->nama_pembayar ?? Auth::user()->name,
+                    ]);
+                }
+            } elseif ($request->filled('pembayaran_id')) {
+                $pembayaran = Pembayaran::findOrFail($request->pembayaran_id);
+                $pembayaran->update([
+                    'bukti_bayar' => $path,
+                    'status' => 'menunggu_konfirmasi',
+                    'tanggal_bayar' => now(),
+                    'nama_pembayar' => $pembayaran->nama_pembayar ?? Auth::user()->name, // fallback jika kosong
+                ]);
+            }
         }
 
         return back()->with('success', 'Bukti bayar berhasil diunggah.');
@@ -504,7 +576,21 @@ class PaymentController extends Controller
 
                     $sisa = (float) $tagihan->nominal - (float) $pembayaran->nominal;
 
+                    // Parse current jenis_tagihan array
+                    $currentJenis = is_array($tagihan->jenis_tagihan)
+                        ? $tagihan->jenis_tagihan
+                        : json_decode($tagihan->jenis_tagihan, true) ?? [];
+
+                    // Remove the paid kategori from jenis_tagihan array
+                    $kategoriDibayar = strtolower($pembayaran->kategori);
+                    $jenisBaru = array_filter($currentJenis, function ($j) use ($kategoriDibayar) {
+                        return strtolower($j) !== $kategoriDibayar;
+                    });
+                    // Reindex array to keep it clean
+                    $jenisBaru = array_values($jenisBaru);
+
                     if ($sisa <= 0) {
+                        // Fully paid - set to lunas
                         $tagihan->update([
                             'nominal' => 0,
                             'status' => 'lunas',
@@ -512,8 +598,10 @@ class PaymentController extends Controller
                             'tanggal_bayar' => now()
                         ]);
                     } else {
+                        // Partial payment - update nominal and remove paid jenis
                         $tagihan->update([
-                            'nominal' => $sisa
+                            'nominal' => $sisa,
+                            'jenis_tagihan' => !empty($jenisBaru) ? $jenisBaru : null
                         ]);
                     }
                 }
@@ -536,7 +624,7 @@ class PaymentController extends Controller
         return redirect()->back()->with('success', 'Pembayaran berhasil diverifikasi.');
     }
 
-    public function reject($id)
+    public function reject(Request $request, $id)
     {
         // 1. Validasi Izin
         if (!Auth::user() || !in_array(Auth::user()->role, ['admin', 'petugas'])) {
@@ -546,6 +634,10 @@ class PaymentController extends Controller
         $pembayaran = Pembayaran::findOrFail($id);
         $user = Auth::user();
 
+        $validated = $request->validate([
+            'alasan' => 'nullable|string|max:2000'
+        ]);
+
         if ($user->role === 'petugas') {
             $pembayaran->petugas_id = $user->id;
             $pembayaran->admin_id = null;
@@ -554,9 +646,24 @@ class PaymentController extends Controller
             $pembayaran->petugas_id = null;
         }
 
-        // 3. Update Status
+        // Update status + alasan
         $pembayaran->status = 'ditolak';
+        $pembayaran->alasan = $validated['alasan'] ?? null;
         $pembayaran->save();
+
+        // Create notification for the owner
+        if ($pembayaran->user_id) {
+            NotificationCustom::create([
+                'user_id' => $pembayaran->user_id,
+                'type' => 'pembayaran_ditolak',
+                'data' => [
+                    'message' => 'Pembayaran Anda ditolak oleh petugas.',
+                    'alasan' => $pembayaran->alasan,
+                    'pembayaran_id' => $pembayaran->id,
+                ],
+                'is_read' => false,
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Pembayaran berhasil ditolak.');
     }
@@ -615,5 +722,27 @@ class PaymentController extends Controller
         Spp::whereIn('id', $request->ids)->delete();
 
         return redirect()->back()->with('success', 'Data yang dipilih berhasil dihapus.');
+    }
+    /**
+     * Membatalkan pembayaran oleh user jika status masih belum_bayar
+     */
+    public function cancel($id)
+    {
+        $user = Auth::user();
+        $pembayaran = Pembayaran::findOrFail($id);
+
+        // Hanya user yang membuat pembayaran atau admin/petugas yang bisa membatalkan
+        if ($user->id !== $pembayaran->user_id && !in_array($user->role, ['admin', 'petugas'])) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki izin membatalkan pembayaran ini.');
+        }
+
+        if ($pembayaran->status !== 'belum_bayar') {
+            return redirect()->back()->with('error', 'Pembayaran tidak dapat dibatalkan.');
+        }
+
+        $pembayaran->status = 'dibatalkan';
+        $pembayaran->save();
+
+        return redirect()->back()->with('success', 'Pembayaran berhasil dibatalkan.');
     }
 }

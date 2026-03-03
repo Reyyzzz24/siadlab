@@ -1,4 +1,4 @@
-import React, { useState, use } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, useForm } from '@inertiajs/react';
 import {
@@ -14,6 +14,7 @@ import { SearchInput } from '@/components/SearchInput';
 import { deleteSelected } from '@/actions/App/Http/Controllers/ItemLendingController';
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 import { Pagination } from '@/components/Pagination';
+import * as XLSX from 'xlsx';
 
 interface Lab {
     id: number;
@@ -49,6 +50,8 @@ export default function Laboratories({
     });
 
     const isAdminOrPetugas = !!auth && ['admin', 'petugas'].includes(auth.user?.role || '');
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [importing, setImporting] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
@@ -163,9 +166,58 @@ export default function Laboratories({
 
                     {isAdminOrPetugas && (
                         <div className="w-full md:w-auto">
-                            <Button className="w-full md:w-auto justify-center" onClick={openCreateModal}>
-                                <PlusIcon className="w-4 h-4 mr-2" /> Tambah Laboratorium
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="sm" onClick={() => {
+                                    const ws = XLSX.utils.json_to_sheet(labs.data.map(l => ({
+                                        id: l.id,
+                                        id_lab: l.id_lab,
+                                        nama_lab: l.nama_lab,
+                                        lokasi: l.lokasi,
+                                        kapasitas: l.kapasitas,
+                                        status: l.status,
+                                    })));
+                                    const wb = XLSX.utils.book_new();
+                                    XLSX.utils.book_append_sheet(wb, ws, 'Laboratories');
+                                    XLSX.writeFile(wb, 'laboratories_export.xlsx');
+                                }}>Export Excel</Button>
+
+                                <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    setImporting(true);
+                                    const reader = new FileReader();
+                                    reader.onload = (evt) => {
+                                        const data = evt.target?.result as ArrayBuffer | string;
+                                        const wb = XLSX.read(data, { type: typeof data === 'string' ? 'binary' : 'array' });
+                                        const wsname = wb.SheetNames[0];
+                                        const ws = wb.Sheets[wsname];
+                                        const json: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+                                        Promise.all(json.map(row => new Promise<void>((res) => {
+                                            const payload = {
+                                                nama_lab: row.nama_lab || row.Nama || row['Nama Lab'] || '',
+                                                lokasi: row.lokasi || row.Lokasi || '',
+                                                kapasitas: Number(row.kapasitas || row.Kapasitas || 0),
+                                                status: row.status || row.Status || 'available',
+                                            };
+                                            router.post(route('lab-lending.labs.store'), payload, {
+                                                onSuccess: () => res(),
+                                                onError: () => res()
+                                            });
+                                        }))).then(() => {
+                                            setImporting(false);
+                                            updateData(params);
+                                            if (fileInputRef.current) fileInputRef.current.value = '';
+                                        });
+                                    };
+                                    reader.readAsArrayBuffer(file);
+                                }} />
+
+                                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Import Excel</Button>
+
+                                <Button className="w-full md:w-auto justify-center" onClick={openCreateModal}>
+                                    <PlusIcon className="w-4 h-4 mr-2" /> Tambah Laboratorium
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </div>

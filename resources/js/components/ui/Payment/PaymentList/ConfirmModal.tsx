@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
-export const ConfirmActionModal = ({ isOpen, onClose, onConfirm, data }: any) => {
+export const ConfirmActionModal = ({ isOpen, onClose, onConfirm, data, reason, setReason }: any) => {
     if (!isOpen) return null;
 
     const isLunas = data?.status === 'lunas';
@@ -19,6 +19,19 @@ export const ConfirmActionModal = ({ isOpen, onClose, onConfirm, data }: any) =>
                 <p className="text-gray-500 dark:text-slate-400 text-sm mb-8 leading-relaxed">
                     Pastikan Anda telah memeriksa bukti transfer mahasiswa secara teliti sebelum melanjutkan aksi ini.
                 </p>
+
+                {data?.status === 'ditolak' && (
+                    <div className="mb-4">
+                        <label className="block text-sm text-gray-700 dark:text-slate-300 mb-2">Alasan Penolakan</label>
+                        <textarea
+                            className="w-full p-2 border rounded-md bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-sm text-gray-800 dark:text-slate-200"
+                            rows={3}
+                            value={reason || ''}
+                            onChange={(e) => setReason?.(e.target.value)}
+                            placeholder="Masukkan alasan penolakan (opsional)"
+                        />
+                    </div>
+                )}
 
                 <div className="flex gap-3">
                     <Button 

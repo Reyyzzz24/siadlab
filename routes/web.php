@@ -8,6 +8,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ItemLendingController;
 use App\Http\Controllers\LabLendingController;
 use App\Http\Controllers\MailArchiveController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UserRoleController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StaffController;
@@ -31,6 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/list', [PaymentController::class, 'list'])->name('list')->middleware(\App\Http\Middleware\EnsureAdminOrPetugas::class);
         Route::get('/finance', [PaymentController::class, 'finance'])->name('finance');
         Route::get('/pay', [PaymentController::class, 'pay'])->name('pay');
+        Route::get('/types', [PaymentController::class, 'types'])->name('types');
         Route::get('/history', [PaymentController::class, 'history'])->name('history');
         Route::get('/invoice', [PaymentController::class, 'invoice'])->name('invoice')->middleware(\App\Http\Middleware\EnsureAdminOrPetugas::class);
         Route::get('/tuition', [PaymentController::class, 'tuition'])->name('tuition')->middleware(\App\Http\Middleware\EnsureAdminOrPetugas::class);
@@ -55,6 +57,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/bayar-selected', [PaymentController::class, 'bayarSelected'])->name('bayar_selected');
         Route::post('/{id}/approve', [PaymentController::class, 'approve'])->name('approve');
         Route::post('/{id}/reject', [PaymentController::class, 'reject'])->name('reject');
+        Route::post('/{id}/cancel', [PaymentController::class, 'cancel'])->name('cancel');
         Route::delete('/list/{id}', [PaymentController::class, 'destroyPembayaran'])->name('destroy_pembayaran');
     });
 
@@ -124,6 +127,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/role/users/bulk-delete', [UserRoleController::class, 'bulkDestroy'])->name('role.users.bulk-delete')->middleware(\App\Http\Middleware\EnsureAdmin::class);
 
     Route::get('/role/students', [StudentController::class, 'index'])->name('students.index');
+
+    // Notifications (API for frontend)
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/mark-read', [NotificationController::class, 'markAllRead'])->name('notifications.markAllRead');
     Route::delete('/role/students/bulk-delete', [StudentController::class, 'bulkDestroy'])->name('students.bulk-delete');
     Route::get('/role/staff', [StaffController::class, 'index'])->name('staff.index');
     Route::delete('/role/staff/bulk-delete', [StaffController::class, 'bulkDestroy'])->name('staff.bulk-delete');

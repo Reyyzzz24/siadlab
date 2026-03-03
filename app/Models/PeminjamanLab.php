@@ -23,6 +23,7 @@ class PeminjamanLab extends Model
         'waktu_selesai',
         'keperluan',
         'status',
+        'alasan',
         'admin_id',   
         'petugas_id',
     ];

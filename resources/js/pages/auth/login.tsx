@@ -106,6 +106,7 @@ export default function Login({
                             {...store.form()}
                             resetOnSuccess={['password']}
                             className="space-y-6"
+                            onSubmit={() => console.log('Login form submit triggered')}
                         >
                             {({ processing, errors }) => (
                                 <>
@@ -161,7 +162,8 @@ export default function Login({
                                                 type="submit"
                                                 className="flex w-full justify-center rounded-xl px-4 py-4 text-lg transition duration-150 ease-in-out"
                                                 variant="yellow"
-                                                disabled={processing}
+                                                disabled={!!processing}
+                                                onClick={() => console.log('Sign in clicked')}
                                             >
                                                 {processing && <Spinner className="mr-2" />}
                                                 Sign in

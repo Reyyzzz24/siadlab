@@ -17,40 +17,67 @@ import { Modal } from "@/components/ui/modal";
 import { TransferPaymentContent } from "@/components/ui/Payment/PayNow/TransferPaymentContent";
 import { CashConfirmationContent } from "@/components/ui/Payment/PayNow/CashConfirmationContent";
 import { AddPaymentForm } from "@/components/ui/Payment/PayNow/AddPaymentForm";
+import { ConfirmModal } from '@/components/ui/Payment/PayNow/ConfirmModal';
+import { PaymentDetailModal } from '@/components/ui/Payment/PayNow/PaymentDetailModal';
 
 interface Pembayaran {
     id: number;
+    id_transaksi?: string;
     jenis_pembayaran: 'cash' | 'transfer';
     kategori: string;
+    jenis_tagihan: string[];
     tanggal_tagihan: string;
     tanggal_bayar: string | null;
     nominal: number;
     status: 'belum_bayar' | 'lunas' | 'menunggu_konfirmasi' | 'pending';
     keterangan?: string;
+    admin?: { id: number; name: string };
+    petugas?: { id: number; name: string };
+}
+
+interface Spp {
+    id: number;
+    kategori_pembayaran: string;
+    nominal: number;
+    status: string;
+}
+
+interface Tagihan {
+    id: number;
+    jenis_tagihan: string[];
+    kategori: string;
+    nominal: number;
+    tanggal_tagihan: string;
 }
 
 interface Props {
     pembayarans: Pembayaran[];
+    tagihans: Tagihan[];
     totalPembayaran: string;
+    listSpp: Spp[];
 }
 
-export default function PayNow({ pembayarans, totalPembayaran }: Props) {
+export default function PayNow({ pembayarans, tagihans, totalPembayaran, listSpp }: Props) {
     useFlashMessages();
 
     // --- States ---
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-    const [selectedDetail, setSelectedDetail] = useState<number | null>(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [addPaymentStep, setAddPaymentStep] = useState<'form' | 'transfer'>('form');
+    const [selectedPayment, setSelectedPayment] = useState<Pembayaran | null>(null);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
-    const [transferData, setTransferData] = useState({ id: 0, nominal: 0 });
+    const [transferData, setTransferData] = useState<{ id: number; nominal: number; ids?: number[] }>({ id: 0, nominal: 0 });
     const [timeLeft, setTimeLeft] = useState<number>(600);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // --- Forms ---
     const uploadForm = useForm({
         pembayaran_id: null as number | null,
+        selected_ids: [] as number[],
         bukti_bayar: null as File | null,
     });
 
@@ -103,7 +130,10 @@ export default function PayNow({ pembayarans, totalPembayaran }: Props) {
 
     const formatRupiah = (value: number) => {
         return new Intl.NumberFormat('id-ID', {
-            style: 'currency', currency: 'IDR', minimumFractionDigits: 0,
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0, // <--- Pastikan ini 0
+            maximumFractionDigits: 0, // <--- Tambahkan ini juga
         }).format(value);
     };
 
@@ -119,27 +149,156 @@ export default function PayNow({ pembayarans, totalPembayaran }: Props) {
     };
 
     // --- Event Handlers ---
-    const handleBayarClick = () => {
-        if (selectedIds.length === 0) return;
+    const toggleSelect = (p: Pembayaran) => {
+        if (p.status !== 'belum_bayar') return;
 
-        const selectedItems = pembayarans.filter(p => selectedIds.includes(p.id));
-        const transferItem = selectedItems.find(p => p.jenis_pembayaran === 'transfer');
-
-        if (transferItem) {
-            setTransferData({ id: transferItem.id, nominal: transferItem.nominal });
-            uploadForm.setData('pembayaran_id', transferItem.id);
-            setIsTransferModalOpen(true);
-        } else {
-            setIsConfirmModalOpen(true);
+        if (selectedIds.length === 0) {
+            setSelectedIds([p.id]);
+            return;
         }
+
+        const first = pembayarans.find(x => x.id === selectedIds[0]);
+        const firstMethod = first?.jenis_pembayaran;
+
+        if (firstMethod && firstMethod !== p.jenis_pembayaran) {
+            alert('Pilih hanya tagihan dengan metode pembayaran yang sama.');
+            return;
+        }
+
+        setSelectedIds(prev => prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id]);
     };
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
-            setSelectedIds(pembayarans.filter(p => p.status === 'belum_bayar').map(p => p.id));
+            const candidates = pembayarans.filter(p => p.status === 'belum_bayar');
+            const methods = Array.from(new Set(candidates.map(c => c.jenis_pembayaran)));
+            if (methods.length > 1) {
+                alert('Tidak dapat memilih semua karena terdapat metode pembayaran yang berbeda. Pilih hanya metode yang sama.');
+                return;
+            }
+            setSelectedIds(candidates.map(p => p.id));
         } else {
             setSelectedIds([]);
         }
+    };
+
+    const handleBayarClick = () => {
+        if (selectedIds.length === 0) return;
+
+        const selectedItems = pembayarans.filter(p => selectedIds.includes(p.id));
+        const method = selectedItems[0].jenis_pembayaran;
+
+        // Ensure all selected have same method (defensive)
+        const allSame = selectedItems.every(s => s.jenis_pembayaran === method);
+        if (!allSame) {
+            alert('Pilih hanya tagihan dengan metode pembayaran yang sama.');
+            return;
+        }
+
+        if (method === 'transfer') {
+            const total = selectedItems.reduce((sum, it) => sum + Number(it.nominal), 0);
+            setTransferData({ id: selectedItems[0].id, nominal: total, ids: selectedIds });
+            // pass selected ids to upload form so backend can handle multiple
+            uploadForm.setData('selected_ids', selectedIds);
+            uploadForm.setData('pembayaran_id', null);
+            setIsTransferModalOpen(true);
+        } else {
+            // cash
+            setIsConfirmModalOpen(true);
+        }
+    };
+
+    // Pastikan useState sudah di-import dari 'react'
+    const [confirmConfig, setConfirmConfig] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        variant: 'danger' | 'warning' | 'info';
+        action: () => void;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        variant: 'info',
+        action: () => { },
+    });
+
+    const closeConfirm = () => {
+        setConfirmConfig((prev) => ({ ...prev, isOpen: false }));
+    };
+
+    // Handler untuk membatalkan pembayaran
+    const handleCancel = (id: number) => {
+        setConfirmConfig({
+            isOpen: true,
+            title: 'Batalkan Pembayaran',
+            message: 'Pembayaran ini akan dibatalkan dan statusnya akan berubah. Apakah Anda yakin?',
+            variant: 'danger',
+            action: () => {
+                router.post(route('payment.cancel', { id: id }), {}, {
+                    onStart: () => setIsProcessing(true), // Mulai loading
+                    onFinish: () => {
+                        setIsProcessing(false); // Selesai loading
+                        closeConfirm();
+                    },
+                    onError: (errors) => {
+                        console.error("Gagal membatalkan:", errors);
+                    }
+                });
+            }
+        });
+    };
+
+    const handleCloseAddModal = () => {
+        setIsAddModalOpen(false);
+        setAddPaymentStep('form');
+        addForm.reset();
+        uploadForm.reset();
+    };
+
+    const handleAddFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const isTransfer = addForm.data.jenis_pembayaran === 'transfer';
+
+        addForm.post(route('payment.store'), {
+            onSuccess: () => {
+                if (isTransfer) {
+                    // Beri jeda sedikit agar backend selesai memproses sebelum pencarian,
+                    // lalu tutup modal add dan buka modal transfer untuk upload bukti
+                    setTimeout(() => {
+                        const newPembayaran = pembayarans?.find(p =>
+                            p.kategori === addForm.data.kategori &&
+                            p.status === 'belum_bayar' &&
+                            p.jenis_pembayaran === 'transfer'
+                        );
+
+                        if (newPembayaran) {
+                            setTransferData({ id: newPembayaran.id, nominal: newPembayaran.nominal });
+                            uploadForm.setData('pembayaran_id', newPembayaran.id);
+                            // tutup add modal (jangan reset uploadForm karena kita butuh datanya)
+                            setIsAddModalOpen(false);
+                            setAddPaymentStep('form');
+                            addForm.reset();
+                            // buka modal transfer
+                            setIsTransferModalOpen(true);
+                        } else {
+                            // fallback: tutup modal jika tidak menemukan
+                            handleCloseAddModal();
+                        }
+                    }, 300);
+                } else {
+                    handleCloseAddModal();
+                }
+            },
+        });
+    };
+
+    // Handler untuk upload bukti transfer
+    const handleUploadSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        uploadForm.post(route('payment.transfer_upload'), {
+            onSuccess: handleCloseAddModal
+        });
     };
 
     return (
@@ -153,14 +312,63 @@ export default function PayNow({ pembayarans, totalPembayaran }: Props) {
                 <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
                     Kelola tagihan aktif dan unggah bukti pembayaran Anda.
                 </p>
+
                 {/* --- TOTAL CARD --- */}
                 <div className="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950/20 dark:to-rose-950/20 border border-pink-200 dark:border-pink-900/50 rounded-2xl p-6 shadow-sm mb-8">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                            <p className="text-pink-600 dark:text-pink-400 text-[10px] font-black uppercase tracking-[0.2em]">Total Tagihan Anda</p>
-                            <h2 className="text-4xl font-black text-pink-700 dark:text-pink-300">{totalPembayaran}</h2>
-                            <p className="text-sm text-pink-600/70 dark:text-pink-400/60 max-w-md">Segera selesaikan tagihan untuk menghindari penangguhan layanan akademik.</p>
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                        <div className="space-y-3">
+                            <div>
+                                <p className="text-pink-600 dark:text-pink-400 text-[10px] font-black uppercase tracking-[0.2em]">Total Tagihan Anda</p>
+                                <h2 className="text-4xl font-black text-pink-700 dark:text-pink-300">{totalPembayaran}</h2>
+                            </div>
+
+                            {/* Bagian Jenis Tagihan Aktif */}
+                            <div className="space-y-2">
+                                <p className="text-[10px] font-bold text-pink-600/50 dark:text-pink-400/50 uppercase tracking-wider">Tagihan Aktif saat ini:</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {(() => {
+                                        // Build map of jenis -> nominal
+                                        const jenisNominalMap = new Map<string, number>();
+
+                                        tagihans.forEach(t => {
+                                            // Gunakan optional chaining (?.) dan nullish coalescing (??)
+                                            const jenisTagihan = t.jenis_tagihan ?? [];
+
+                                            if (jenisTagihan.length > 0) {
+                                                jenisTagihan.forEach(jenis => {
+                                                    const sppItem = listSpp.find(spp => spp.kategori_pembayaran.toLowerCase() === jenis.toLowerCase());
+                                                    // Hindari pembagian dengan nol jika length kosong
+                                                    const nominalItem = sppItem ? sppItem.nominal : (t.nominal / (jenisTagihan.length || 1));
+
+                                                    // Add to map (accumulate if already exists)
+                                                    const currentNominal = jenisNominalMap.get(jenis.toLowerCase()) || 0;
+                                                    jenisNominalMap.set(jenis.toLowerCase(), currentNominal + nominalItem);
+                                                });
+                                            }
+                                        });
+
+                                        // Convert map to sorted array
+                                        const jenisArray = Array.from(jenisNominalMap.entries())
+                                            .sort((a, b) => a[0].localeCompare(b[0]));
+
+                                        return jenisArray.length > 0 ? (
+                                            jenisArray.map(([kat, nominal]) => (
+                                                <span key={kat} className="px-3 py-1.5 bg-white/60 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-800 rounded-lg text-[10px] font-bold text-pink-700 dark:text-pink-300 capitalize whitespace-nowrap">
+                                                    • {kat.replace(/_/g, ' ')} ({formatRupiah(nominal)})
+                                                </span>
+                                            ))
+                                        ) : (
+                                            <span className="text-xs text-pink-600/60 italic">Tidak ada tagihan aktif</span>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-pink-600/70 dark:text-pink-400/60 max-w-md">
+                                Segera selesaikan tagihan untuk menghindari penangguhan layanan akademik.
+                            </p>
                         </div>
+
                         <div className="hidden md:flex bg-white/50 dark:bg-pink-900/20 p-4 rounded-2xl border border-pink-100 dark:border-pink-800/40">
                             <ClockIcon className="w-12 h-12 text-pink-500" />
                         </div>
@@ -174,18 +382,16 @@ export default function PayNow({ pembayarans, totalPembayaran }: Props) {
                         className="w-full md:w-auto flex items-center justify-center gap-2 transition-all active:scale-95"
                     >
                         <PlusIcon className="w-4 h-4 mr-2" />
-                        Tambah Tagihan
+                        Tambah Pembayaran
                     </Button>
 
-                    {selectedIds.length > 0 && (
-                        <Button
-                            className="w-full md:w-auto bg-green-600 hover:bg-green-700 shadow-lg shadow-green-100 dark:shadow-none animate-in fade-in slide-in-from-right-4"
-                            onClick={handleBayarClick}
-                        >
-                            <CreditCardIcon className="w-4 h-4 mr-2" />
-                            Bayar Terpilih ({selectedIds.length})
-                        </Button>
-                    )}
+                    <Button
+                        className="w-full md:w-auto bg-green-600 hover:bg-green-700 shadow-lg shadow-green-100 dark:shadow-none animate-in fade-in slide-in-from-right-4"
+                        onClick={handleBayarClick}
+                    >
+                        <CreditCardIcon className="w-4 h-4 mr-2" />
+                        Bayar Terpilih ({selectedIds.length})
+                    </Button>
                 </div>
 
                 {/* --- DESKTOP TABLE VIEW --- */}
@@ -205,7 +411,8 @@ export default function PayNow({ pembayarans, totalPembayaran }: Props) {
                                 <Th>Kategori & Jenis</Th>
                                 <Th>Nominal & Tanggal</Th>
                                 <Th>Status</Th>
-                                <Th center>Opsi</Th>
+                                <Th center>Detail</Th>
+                                <Th center>Aksi</Th>
                             </Tr>
                         </Thead>
                         <Tbody>
@@ -218,10 +425,10 @@ export default function PayNow({ pembayarans, totalPembayaran }: Props) {
                                                 className="rounded border-gray-300 disabled:opacity-30"
                                                 disabled={p.status !== 'belum_bayar'}
                                                 checked={selectedIds.includes(p.id)}
-                                                onChange={() => setSelectedIds(prev => prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id])}
+                                                onChange={() => toggleSelect(p)}
                                             />
                                         </Td>
-                                        <Td center className="text-gray-400 font-medium">{i + 1}</Td>
+                                        <Td center className="font-medium">{i + 1}</Td>
                                         <Td>
                                             <div className="font-medium capitalize">{p.kategori.replace('_', ' ')}</div>
                                             <div className="text-[10px] text-gray-400 font-extrabold uppercase">{p.jenis_pembayaran}</div>
@@ -240,16 +447,22 @@ export default function PayNow({ pembayarans, totalPembayaran }: Props) {
                                         </Td>
                                         <Td center className="relative">
                                             <button
-                                                onClick={() => setSelectedDetail(selectedDetail === p.id ? null : p.id)}
+                                                onClick={() => {
+                                                    setSelectedPayment(p);
+                                                    setIsDetailModalOpen(true);
+                                                }}
                                                 className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
                                             >
                                                 <InformationCircleIcon className="w-5 h-5" />
                                             </button>
-                                            {selectedDetail === p.id && (
-                                                <div className="absolute right-12 top-0 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl p-4 w-60 text-left animate-in fade-in zoom-in duration-150">
-                                                    <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase mb-1">Catatan:</p>
-                                                    <p className="text-xs text-gray-600 dark:text-gray-300 italic leading-relaxed">{p.keterangan || 'Tidak ada catatan tambahan.'}</p>
-                                                </div>
+                                        </Td>
+                                        <Td center>
+                                            {p.status === 'belum_bayar' ? (
+                                                <Button variant="destructive" size="sm" onClick={() => handleCancel(p.id)}>
+                                                    Batalkan
+                                                </Button>
+                                            ) : (
+                                                <span className="text-gray-400 text-xs">No Action</span>
                                             )}
                                         </Td>
                                     </Tr>
@@ -280,7 +493,7 @@ export default function PayNow({ pembayarans, totalPembayaran }: Props) {
                                             className="mt-1 rounded border-gray-300"
                                             disabled={p.status !== 'belum_bayar'}
                                             checked={selectedIds.includes(p.id)}
-                                            onChange={() => setSelectedIds(prev => prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id])}
+                                            onChange={() => toggleSelect(p)}
                                         />
                                         <div>
                                             <h4 className="font-bold text-gray-800 dark:text-gray-100 capitalize leading-tight">
@@ -323,6 +536,38 @@ export default function PayNow({ pembayarans, totalPembayaran }: Props) {
                                         Dibayar: {new Date(p.tanggal_bayar).toLocaleDateString('id-ID')}
                                     </div>
                                 )}
+
+                                {/* Container Tombol Aksi di Mobile */}
+                                <div className="flex justify-between items-center mt-3 pt-3">
+                                    {/* Tombol Detail - Dibuat seperti tombol outline agar seimbang */}
+                                    <button
+                                        onClick={() => {
+                                            setSelectedPayment(p);
+                                            setIsDetailModalOpen(true);
+                                        }}
+                                        className="flex items-center justify-center p-2.5 text-gray-500 bg-gray-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 rounded-xl transition-all border border-transparent hover:border-indigo-100 dark:hover:border-indigo-800"
+                                        title="Lihat Detail"
+                                    >
+                                        <InformationCircleIcon className="w-5 h-5" />
+                                    </button>
+
+                                    {/* Tombol Batalkan - Menggunakan flex-1 agar memenuhi sisa ruang */}
+                                    {p.status === 'belum_bayar' ? (
+                                        <button
+                                            onClick={() => handleCancel(p.id)}
+                                            className="text-xs font-bold text-red-600 hover:text-red-700 underline"
+                                        >
+                                            Batalkan
+                                        </button>
+                                    ) : (
+                                        // Placeholder agar layout tetap konsisten jika tidak ada tombol batalkan
+                                        <div className="flex-1 text-right">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                No Further Action
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))
                     ) : (
@@ -335,13 +580,48 @@ export default function PayNow({ pembayarans, totalPembayaran }: Props) {
             </div>
 
             {/* --- MODALS --- */}
+            <ConfirmModal
+                isOpen={confirmConfig.isOpen}
+                onClose={closeConfirm}
+                onConfirm={confirmConfig.action}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                variant={confirmConfig.variant}
+                isLoading={isProcessing} // Gunakan state baru di sini
+            />
 
             {/* Modal Transfer */}
-            <Modal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} title="Upload Bukti Transfer" maxWidth="md">
+            <Modal
+                isOpen={isTransferModalOpen}
+                onClose={() => setIsTransferModalOpen(false)}
+                title="Upload Bukti Transfer"
+                maxWidth="md"
+                // TAMBAHKAN FOOTER DI SINI
+                footer={
+                    <div className="flex w-full gap-2">
+                        <Button
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => setIsTransferModalOpen(false)}
+                        >
+                            Tutup
+                        </Button>
+                        <Button
+                            className="flex-1"
+                            type="submit"
+                            form="transfer-upload-form" // Harus sama dengan ID form di TransferPaymentContent
+                            disabled={uploadForm.processing}
+                        >
+                            {uploadForm.processing ? 'Mengirim...' : 'Kirim Bukti Pembayaran'}
+                        </Button>
+                    </div>
+                }
+            >
                 <TransferPaymentContent
                     nominal={transferData.nominal}
                     timeLeft={timeLeft}
                     processing={uploadForm.processing}
+                    // Pastikan di dalam TransferPaymentContent, tag <form> memiliki id="transfer-upload-form"
                     onSubmit={(e) => {
                         e.preventDefault();
                         uploadForm.post(route('payment.transfer_upload'), {
@@ -372,48 +652,90 @@ export default function PayNow({ pembayarans, totalPembayaran }: Props) {
                 />
             </Modal>
 
-            {/* Modal Tambah Tagihan */}
+            <PaymentDetailModal
+                isOpen={isDetailModalOpen}
+                payment={selectedPayment}
+                formatRupiah={formatRupiah}
+                onClose={() => {
+                    setIsDetailModalOpen(false);
+                    setSelectedPayment(null);
+                }}
+                onPayNowClick={(p) => {
+                    // 1. Siapkan data nominal untuk ditampilkan di modal transfer
+                    setTransferData({
+                        id: p.id,
+                        nominal: Number(p.nominal)
+                    });
+
+                    // 2. Masukkan ID ke form (sesuai dengan logic uploadForm Anda)
+                    uploadForm.setData('pembayaran_id', p.id);
+
+                    // 3. Alihkan modal
+                    setIsDetailModalOpen(false);
+                    setIsTransferModalOpen(true);
+                }}
+            />
+            {/* Modal Tambah Pembayaran */}
             <Modal
                 isOpen={isAddModalOpen}
-                onClose={() => setIsAddModalOpen(false)}
-                title="Buat Tagihan Baru"
+                onClose={handleCloseAddModal}
+                title={addPaymentStep === 'form' ? 'Buat Pembayaran Baru' : 'Upload Bukti Transfer'}
                 maxWidth="md"
                 footer={
-                    <>
-                        <Button
-                            variant="outline"
-                            className="flex-1"
-                            onClick={() => setIsAddModalOpen(false)} disabled={addForm.processing}>
-                            Batal
-                        </Button>
-                        <Button
-                            type="submit"
-                            className="flex-1"
-                            form="add-payment-form"
-                            disabled={addForm.processing}
-                        >
-                            {addForm.processing ? 'Menyimpan...' : 'Simpan Tagihan'}
-                        </Button>
-                    </>
+                    <div className="flex w-full gap-2">
+                        {addPaymentStep === 'form' ? (
+                            <>
+                                <Button variant="outline" className="flex-1" onClick={handleCloseAddModal} disabled={addForm.processing}>
+                                    Batal
+                                </Button>
+                                <Button type="submit" form="add-payment-form" className="flex-1" disabled={addForm.processing}>
+                                    {addForm.processing ? 'Menyimpan...' : 'Lanjutkan'}
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button variant="outline" className="flex-1" onClick={handleCloseAddModal}>
+                                    Tutup
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    className="flex-1"
+                                    form="transfer-upload-form" // Hubungkan dengan ID form di TransferPaymentContent
+                                    disabled={uploadForm.processing}
+                                    onClick={handleUploadSubmit} // Trigger handler manual jika form tidak membungkus input
+                                >
+                                    {uploadForm.processing ? 'Mengirim...' : 'Kirim Bukti'}
+                                </Button>
+                            </>
+                        )}
+                    </div>
                 }
             >
-                <AddPaymentForm
-                    id="add-payment-form" // Beri ID agar tombol di footer bisa melakukan submit
-                    data={addForm.data}
-                    setData={addForm.setData}
-                    errors={addForm.errors}
-                    processing={addForm.processing}
-                    onCancel={() => setIsAddModalOpen(false)}
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        addForm.post(route('payment.store'), {
-                            onSuccess: () => {
-                                setIsAddModalOpen(false);
-                                addForm.reset();
+                {addPaymentStep === 'form' ? (
+                    <AddPaymentForm
+                        listSpp={listSpp}
+                        tagihans={tagihans}
+                        data={addForm.data}
+                        setData={addForm.setData}
+                        errors={addForm.errors}
+                        onSubmit={handleAddFormSubmit}
+                        onMethodChange={(method) => {
+                            if (method === 'transfer') {
+                                setTransferData(prev => ({ ...prev, nominal: Number(addForm.data.nominal) }));
                             }
-                        });
-                    }}
-                />
+                        }}
+                    />
+                ) : (
+                    <TransferPaymentContent
+                        nominal={transferData.nominal}
+                        timeLeft={timeLeft}
+                        processing={uploadForm.processing}
+                        onSubmit={handleUploadSubmit}
+                        onFileChange={(file) => uploadForm.setData('bukti_bayar', file)}
+                        formatRupiah={formatRupiah}
+                        formatTime={formatTime}
+                    />
+                )}
             </Modal>
         </AppLayout>
     );

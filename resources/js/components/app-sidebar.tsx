@@ -46,7 +46,7 @@ export function AppSidebar() {
         { title: 'Keuangan', href: '/payment/finance', icon: WalletIcon },
         { title: 'Tagihan', href: '/payment/invoice', icon: DocumentTextIcon },
         { title: 'Bayar Sekarang', href: '/payment/pay', icon: CreditCardIcon },
-        { title: 'Daftar Pembayaran', href: '/payment/list', icon: DocumentTextIcon },
+        { title: 'Validasi Pembayaran', href: '/payment/list', icon: DocumentTextIcon },
         { title: 'Riwayat Pembayaran', href: '/payment/history', icon: ClockIcon },
         { title: 'SPP', href: '/payment/tuition', icon: AcademicCapIcon },
     ];
@@ -56,7 +56,7 @@ export function AppSidebar() {
         { title: 'Dashboard', href: '/item-lending/dashboard', icon: Squares2X2Icon },
         { title: 'Katalog Barang', href: '/item-lending/items', icon: ArchiveBoxIcon },
         { title: 'Pinjam Barang', href: '/item-lending/lend', icon: FolderIcon },
-        { title: 'Daftar Pinjam', href: '/item-lending/list', icon: DocumentTextIcon },
+        { title: 'Validasi Pinjam', href: '/item-lending/list', icon: DocumentTextIcon },
         { title: 'Riwayat Pinjam', href: '/item-lending/history', icon: ClockIcon },
     ];
 
@@ -64,7 +64,7 @@ export function AppSidebar() {
     const labLendingNavItems: NavItem[] = [
         { title: 'Dashboard', href: '/lab-lending/dashboard', icon: Squares2X2Icon },
         { title: 'Daftar Lab', href: '/lab-lending/laboratories', icon: BeakerIcon },
-        { title: 'Daftar Pinjam', href: '/lab-lending/list', icon: DocumentTextIcon },
+        { title: 'Validasi Pinjam', href: '/lab-lending/list', icon: DocumentTextIcon },
         { title: 'Booking Lab', href: '/lab-lending/lend', icon: BeakerIcon },
         { title: 'Riwayat', href: '/lab-lending/history', icon: ClockIcon },
     ];

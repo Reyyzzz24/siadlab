@@ -53,13 +53,13 @@ export default function LendNow({ auth, peminjamans = [], barangTersedia = [], t
         isOpen: boolean;
         title: string;
         message: string;
-        variant: 'danger' | 'success' | 'warning';
+        variant: 'destructive' | 'default';
         action: () => void;
     }>({
         isOpen: false,
         title: '',
         message: '',
-        variant: 'success',
+        variant: 'default',
         action: () => { }
     });
 
@@ -84,7 +84,7 @@ export default function LendNow({ auth, peminjamans = [], barangTersedia = [], t
             isOpen: true,
             title: 'Konfirmasi Pengembalian',
             message: `Anda akan mengembalikan ${selectedIds.length} item secara bersamaan. Lanjutkan?`,
-            variant: 'success',
+            variant: 'default',
             action: () => {
                 router.post('/item-lending/kembalikan-selected', { ids: selectedIds }, {
                     onSuccess: () => {
@@ -99,12 +99,16 @@ export default function LendNow({ auth, peminjamans = [], barangTersedia = [], t
     const handleCancel = (id: number) => {
         setConfirmConfig({
             isOpen: true,
-            title: 'Batalkan Pinjaman',
-            message: 'Data peminjaman ini akan dihapus permanen. Apakah Anda yakin?',
-            variant: 'danger',
+            title: 'Batalkan Peminjaman',
+            message: 'Anda akan membatalkan peminjaman ini. Lanjutkan?',
+            variant: 'destructive',
             action: () => {
                 router.post(`/item-lending/${id}/cancel`, {}, {
-                    onSuccess: () => closeConfirm()
+                    onSuccess: () => {
+                        setSelectedIds([]);
+                        closeConfirm();
+                        router.reload();
+                    }
                 });
             }
         });
@@ -204,7 +208,7 @@ export default function LendNow({ auth, peminjamans = [], barangTersedia = [], t
                         Tambah Peminjaman
                     </Button>
 
-                    {selectedIds.length > 0 && (
+                   {/*  {selectedIds.length > 0 && ( */}
                         <Button
                             variant="default"
                             onClick={handleKembalikanSelected}
@@ -213,7 +217,7 @@ export default function LendNow({ auth, peminjamans = [], barangTersedia = [], t
                             <ArrowPathRoundedSquareIcon className="w-5 h-5" />
                             Kembalikan ({selectedIds.length})
                         </Button>
-                    )}
+                 {/*    )} */}
                 </div>
 
                 {/* --- DESKTOP TABLE VIEW --- */}
@@ -258,7 +262,7 @@ export default function LendNow({ auth, peminjamans = [], barangTersedia = [], t
                                         </Td>
                                         <Td>
                                             {p.status === 'booked' ? (
-                                                <Button variant="destructive" size="sm" onClick={() => handleCancel(p.id)}>Batal</Button>
+                                                <Button variant="destructive" size="sm" onClick={() => handleCancel(p.id)}>Batalkan</Button>
                                             ) : (
                                                 <TooltipProvider><Tooltip><TooltipTrigger><InformationCircleIcon className="w-5 h-5 text-gray-400" /></TooltipTrigger><TooltipContent>{p.petugas?.name || 'Admin'}</TooltipContent></Tooltip></TooltipProvider>
                                             )}
@@ -267,10 +271,10 @@ export default function LendNow({ auth, peminjamans = [], barangTersedia = [], t
                                 ))
                             ) : (
                                 <Tr>
-                                    <Td colSpan={6} className="text-center py-20 text-gray-400">
+                                    <Td colSpan={8} className="text-center py-20 text-gray-400">
                                         <div className="flex flex-col items-center">
                                             <NoSymbolIcon className="w-10 h-10 mb-2" />
-                                            <p>Tidak ada data peminjaman aktif</p>
+                                            <p>Tidak ada peminjaman aktif</p>
                                         </div>
                                     </Td>
                                 </Tr>
@@ -345,6 +349,8 @@ export default function LendNow({ auth, peminjamans = [], barangTersedia = [], t
                 variant={confirmConfig.variant}
                 isLoading={processing}
             />
+
+            {/* Simple confirmation used for cancel action */}
 
             <Modal
                 isOpen={isAddModalOpen}

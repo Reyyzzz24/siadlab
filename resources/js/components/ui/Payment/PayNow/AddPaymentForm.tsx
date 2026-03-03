@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Label } from "@/components/ui/label";
 import { Input, Textarea } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { 
     Select, 
     SelectContent, 
@@ -10,54 +9,105 @@ import {
     SelectValue 
 } from "@/components/ui/select";
 
+interface Spp {
+    id: number;
+    kategori_pembayaran: string;
+    nominal: number;
+}
+
+interface Tagihan {
+    id: number;
+    jenis_tagihan?: string[];
+    kategori?: string;
+    nominal: number;
+    tanggal_tagihan: string;
+}
+
 interface AddPaymentFormProps {
-    id?: string; // Tambahkan ini agar TypeScript tidak komplain
+    listSpp: Spp[];
+    tagihans?: Tagihan[];
     data: any;
-    setData: any;
+    setData: (key: string, value: any) => void;
     errors: any;
-    processing: boolean;
-    onCancel: () => void;
     onSubmit: (e: React.FormEvent) => void;
+    onMethodChange?: (method: 'transfer' | 'cash') => void;
 }
 
 export const AddPaymentForm = ({ 
     data, 
     setData, 
     errors, 
-    processing, 
     onSubmit, 
-    onCancel 
+    listSpp = [],
+    tagihans = [],
+    onMethodChange
 }: AddPaymentFormProps) => {
+    const [activeJenis, setActiveJenis] = useState<Array<{label: string, nominal: number}>>([]);
+
+    useEffect(() => {
+        const jenisSet = new Set<string>();
+        tagihans.forEach(t => {
+            if (Array.isArray(t.jenis_tagihan)) {
+                t.jenis_tagihan.forEach(jenis => jenisSet.add(jenis));
+            }
+        });
+
+        const jenisList = Array.from(jenisSet)
+            .sort()
+            .map(jenis => {
+                const sppItem = listSpp.find(spp => spp.kategori_pembayaran.toLowerCase() === jenis.toLowerCase());
+                return {
+                    label: jenis,
+                    nominal: sppItem ? sppItem.nominal : 0
+                };
+            })
+            .filter(item => item.nominal > 0);
+
+        setActiveJenis(jenisList);
+    }, [tagihans, listSpp]);
+
     return (
         <form id="add-payment-form" className="space-y-4" onSubmit={onSubmit}>
-            {/* Kategori Pembayaran */}
             <div>
                 <Label htmlFor="kategori">Kategori Pembayaran</Label>
                 <Select
                     value={data.kategori}
-                    onValueChange={(value: string) => setData('kategori', value)}
+                    onValueChange={(value: string) => {
+                        setData('kategori', value);
+                        const found = activeJenis.find(j => j.label.toLowerCase() === value.toLowerCase());
+                        if (found) setData('nominal', found.nominal);
+                    }}
                 >
                     <SelectTrigger id="kategori" className="w-full">
                         <SelectValue placeholder="Pilih kategori" />
                     </SelectTrigger>
                     <SelectContent className="z-[100]">
-                        <SelectItem value="skripsi">Skripsi</SelectItem>
-                        <SelectItem value="praktikum">Praktikum</SelectItem>
-                        <SelectItem value="sempro">Sempro</SelectItem>
-                        <SelectItem value="semhas">Semhas</SelectItem>
-                        <SelectItem value="other">Lainnya</SelectItem>
+                        {activeJenis.length > 0 ? (
+                            activeJenis.map((jenis) => (
+                                <SelectItem key={jenis.label} value={jenis.label.toLowerCase()}>{jenis.label}</SelectItem>
+                            ))
+                        ) : (
+                            <>
+                                <SelectItem value="skripsi">Skripsi</SelectItem>
+                                <SelectItem value="praktikum">Praktikum</SelectItem>
+                                <SelectItem value="sempro">Sempro</SelectItem>
+                                <SelectItem value="other">Lainnya</SelectItem>
+                            </>
+                        )}
                     </SelectContent>
                 </Select>
                 {errors.kategori && <p className="text-red-500 text-xs mt-1">{errors.kategori}</p>}
             </div>
 
-            {/* Metode Pembayaran */}
             <div>
                 <Label>Metode Pembayaran</Label>
                 <div className="grid grid-cols-2 gap-3">
                     <button
                         type="button"
-                        onClick={() => setData('jenis_pembayaran', 'transfer')}
+                        onClick={() => {
+                            setData('jenis_pembayaran', 'transfer');
+                            onMethodChange?.('transfer');
+                        }}
                         className={`py-2.5 rounded-xl text-sm font-bold transition-all border-2 ${
                             data.jenis_pembayaran === 'transfer'
                                 ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
@@ -68,7 +118,10 @@ export const AddPaymentForm = ({
                     </button>
                     <button
                         type="button"
-                        onClick={() => setData('jenis_pembayaran', 'cash')}
+                        onClick={() => {
+                            setData('jenis_pembayaran', 'cash');
+                            onMethodChange?.('cash');
+                        }}
                         className={`py-2.5 rounded-xl text-sm font-bold transition-all border-2 ${
                             data.jenis_pembayaran === 'cash'
                                 ? 'border-green-600 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
@@ -80,7 +133,6 @@ export const AddPaymentForm = ({
                 </div>
             </div>
 
-            {/* Nominal */}
             <div>
                 <Label htmlFor="nominal">Nominal (Rp)</Label>
                 <Input
@@ -90,12 +142,10 @@ export const AddPaymentForm = ({
                     value={data.nominal}
                     onChange={e => setData('nominal', e.target.value)}
                     required
-                    className="w-full"
                 />
                 {errors.nominal && <p className="text-red-500 text-xs mt-1">{errors.nominal}</p>}
             </div>
 
-            {/* Keterangan */}
             <div>
                 <Label htmlFor="keterangan">Keterangan (Opsional)</Label>
                 <Textarea
@@ -104,23 +154,8 @@ export const AddPaymentForm = ({
                     rows={2}
                     value={data.keterangan}
                     onChange={e => setData('keterangan', e.target.value)}
-                    className="w-full"
                 />
             </div>
-
-            {/* Actions */}
-            {/* <div className="pt-4 flex gap-3">
-                <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
-                    Batal
-                </Button>
-                <Button
-                    type="submit"
-                    disabled={processing}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                    {processing ? 'Menyimpan...' : 'Simpan Tagihan'}
-                </Button>
-            </div> */}
         </form>
     );
 };

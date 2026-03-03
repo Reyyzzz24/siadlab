@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use App\Models\Petugas;
 use App\Models\Administrator;
+use App\Models\NotificationCustom;
 
 class ItemLendingController extends Controller
 {
@@ -382,7 +383,7 @@ class ItemLendingController extends Controller
         }
 
         $pinjam->update([
-            'status' => 'ditolak'
+            'status' => 'dikembalikan'
         ]);
 
         return redirect()->back()->with('success', 'Peminjaman berhasil dibatalkan.');
@@ -535,7 +536,7 @@ class ItemLendingController extends Controller
     /**
      * Reject a return request (admin/petugas action) — revert to dipinjam
      */
-    public function rejectBack($id)
+    public function rejectBack(Request $request, $id)
     {
         // Only admin or petugas can reject return confirmations
         if (!Auth::user() || !in_array(Auth::user()->role, ['admin', 'petugas'])) {
@@ -548,10 +549,28 @@ class ItemLendingController extends Controller
             return redirect()->back()->with('error', 'Hanya peminjaman dengan status proses_kembali yang dapat ditolak.');
         }
 
+        $validated = $request->validate([
+            'alasan' => 'nullable|string|max:2000'
+        ]);
+
         $pinjam->update([
             'status' => 'dipinjam',
             'tanggal_kembali_sebenarnya' => null,
+            'alasan' => $validated['alasan'] ?? null,
         ]);
+
+        if ($pinjam->user_id) {
+            NotificationCustom::create([
+                'user_id' => $pinjam->user_id,
+                'type' => 'peminjaman_barang_reject_return',
+                'data' => [
+                    'message' => 'Permintaan pengembalian barang Anda ditolak.',
+                    'alasan' => $validated['alasan'] ?? null,
+                    'peminjaman_id' => $pinjam->id,
+                ],
+                'is_read' => false,
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Permintaan pengembalian ditolak, status kembali menjadi dipinjam.');
     }

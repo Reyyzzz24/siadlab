@@ -24,6 +24,7 @@ class PeminjamanBarang extends Model
         'tanggal_kembali',
         'tanggal_kembali_sebenarnya',
         'status',
+        'alasan',
         'id_transaksi',
         'petugas_id',
         'admin_id',

@@ -148,7 +148,7 @@ export default function History({ pembayarans, filters }: Props) {
                                         updateData(resetParams);
                                     }}
                                 >
-                                    <FilterItem
+                                  {/*   <FilterItem
                                         label="Status"
                                         value={params.status}
                                         onValueChange={(val) => {
@@ -163,7 +163,7 @@ export default function History({ pembayarans, filters }: Props) {
                                             { label: 'Menunggu Konfirmasi', value: 'menunggu_konfirmasi' },
                                             { label: 'Ditolak', value: 'ditolak' },
                                         ]}
-                                    />
+                                    /> */}
                                     <FilterItem
                                         label="Kategori"
                                         value={params.kategori}

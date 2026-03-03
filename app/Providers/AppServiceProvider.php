@@ -10,6 +10,13 @@ use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log; // Tambahkan ini agar tidak error 'Log'
+use App\Models\Pembayaran;
+use App\Models\PeminjamanBarang;
+use App\Models\PeminjamanLab;
+use App\Models\SuratMasuk;
+use App\Models\SuratKeluar;
+use App\Models\NotificationCustom;
+use App\Events\NotificationCreated;
 use Masbug\Flysystem\GoogleDriveAdapter;
 use League\Flysystem\Filesystem;
 use Google\Client as GoogleClient;
@@ -33,8 +40,71 @@ class AppServiceProvider extends ServiceProvider
         // Tetap jalankan default konfigurasi kamu
         $this->configureDefaults();
 
+        // Register model listeners to create notifications on status changes
+        try {
+            Pembayaran::updated(function ($model) {
+                if ($model->wasChanged('status')) {
+                    $message = 'Pembayaran: status ' . $model->status;
+                    $notification = NotificationCustom::create([
+                        'user_id' => $model->user_id,
+                        'type' => 'pembayaran',
+                        'data' => ['message' => $message, 'model_id' => $model->id, 'status' => $model->status],
+                    ]);
+                    event(new NotificationCreated($notification));
+                }
+            });
+
+            PeminjamanBarang::updated(function ($model) {
+                if ($model->wasChanged('status')) {
+                    $message = 'Peminjaman barang: status ' . $model->status;
+                    $notification = NotificationCustom::create([
+                        'user_id' => $model->user_id,
+                        'type' => 'item_lending',
+                        'data' => ['message' => $message, 'model_id' => $model->id, 'status' => $model->status],
+                    ]);
+                    event(new NotificationCreated($notification));
+                }
+            });
+
+            PeminjamanLab::updated(function ($model) {
+                if ($model->wasChanged('status')) {
+                    $message = 'Peminjaman lab: status ' . $model->status;
+                    $notification = NotificationCustom::create([
+                        'user_id' => $model->user_id,
+                        'type' => 'lab_lending',
+                        'data' => ['message' => $message, 'model_id' => $model->id, 'status' => $model->status],
+                    ]);
+                    event(new NotificationCreated($notification));
+                }
+            });
+
+            // Notify penerima when incoming mail is created
+            SuratMasuk::created(function ($model) {
+                $message = 'Surat masuk diterima: ' . ($model->perihal ?? '');
+                $notification = NotificationCustom::create([
+                    'user_id' => $model->penerima_id,
+                    'type' => 'mail_incoming',
+                    'data' => ['message' => $message, 'model_id' => $model->id],
+                ]);
+                event(new NotificationCreated($notification));
+            });
+
+            // Notify pengirim when outgoing mail is created
+            SuratKeluar::created(function ($model) {
+                $message = 'Surat keluar dibuat: ' . ($model->perihal ?? '');
+                $notification = NotificationCustom::create([
+                    'user_id' => $model->pengirim_id,
+                    'type' => 'mail_outgoing',
+                    'data' => ['message' => $message, 'model_id' => $model->id],
+                ]);
+                event(new NotificationCreated($notification));
+            });
+        } catch (\Throwable $e) {
+            Log::debug('Notification listeners registration skipped: ' . $e->getMessage());
+        }
+
         // 1. Logika Force HTTPS
-        /* URL::forceScheme('https'); */
+       /*  URL::forceScheme('https'); */
 
         // 2. Registrasi Driver Google Drive
         try {
