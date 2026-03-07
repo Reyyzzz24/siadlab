@@ -34,31 +34,26 @@ class PeminjamanBarang extends Model
     protected static function booted()
     {
         static::saving(function ($peminjaman) {
-            // Hitung durasi otomatis jika ada tanggal pinjam & kembali
+            // 1. Selalu hitung durasi selama ada tanggalnya (Pindahkan ke paling atas)
             if ($peminjaman->tanggal_pinjam && $peminjaman->tanggal_kembali) {
                 $peminjaman->durasi_hari = Carbon::parse($peminjaman->tanggal_pinjam)
                     ->diffInDays(Carbon::parse($peminjaman->tanggal_kembali)) + 1;
             }
 
-            // Jangan ubah status jika sudah termasuk status final atau proses
-            $statusFinal = ['booked', 'dipinjam', 'proses_kembali', 'dikembalikan', 'ditolak', 'invalid', 'terlambat'];
-            if (in_array($peminjaman->status, $statusFinal)) {
+            // 2. Validasi dasar
+            if ($peminjaman->tanggal_kembali && Carbon::parse($peminjaman->tanggal_kembali)->lt(Carbon::parse($peminjaman->tanggal_pinjam))) {
+                $peminjaman->status = 'invalid';
                 return;
             }
 
-            // Validasi tanggal kembali < tanggal pinjam
-            if ($peminjaman->tanggal_kembali && Carbon::parse($peminjaman->tanggal_kembali)->lt(Carbon::parse($peminjaman->tanggal_pinjam))) {
-                $peminjaman->status = 'invalid';
-            }
-            // Barang sudah dikembalikan
-            elseif ($peminjaman->tanggal_kembali_sebenarnya) {
-                $peminjaman->status = Carbon::parse($peminjaman->tanggal_kembali_sebenarnya)->gt(Carbon::parse($peminjaman->tanggal_kembali))
-                    ? 'terlambat'
-                    : 'dikembalikan';
-            }
-            // Default untuk peminjaman aktif
-            else {
-                $peminjaman->status = 'dipinjam';
+            // 3. Logic status (Hanya ubah jika bukan status yang dikunci oleh admin/sistem)
+            $lockedStatus = ['ditolak', 'dikembalikan', 'terlambat'];
+            if (!in_array($peminjaman->status, $lockedStatus)) {
+                if ($peminjaman->tanggal_kembali_sebenarnya) {
+                    $peminjaman->status = Carbon::parse($peminjaman->tanggal_kembali_sebenarnya)->gt(Carbon::parse($peminjaman->tanggal_kembali))
+                        ? 'terlambat'
+                        : 'dikembalikan';
+                }
             }
         });
     }

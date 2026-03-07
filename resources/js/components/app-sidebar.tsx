@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import AppLogo from './app-logo';
-import { ShieldCheckIcon } from 'lucide-react';
+import { Settings, ShieldCheckIcon } from 'lucide-react';
 
 export function AppSidebar() {
     const { url, props } = usePage() as any;
@@ -48,7 +48,7 @@ export function AppSidebar() {
         { title: 'Bayar Sekarang', href: '/payment/pay', icon: CreditCardIcon },
         { title: 'Validasi Pembayaran', href: '/payment/list', icon: DocumentTextIcon },
         { title: 'Riwayat Pembayaran', href: '/payment/history', icon: ClockIcon },
-        { title: 'SPP', href: '/payment/tuition', icon: AcademicCapIcon },
+        { title: 'Biaya Akademik', href: '/payment/tuition', icon: AcademicCapIcon },
     ];
 
     // 2. Menu Layanan Item Lending
@@ -107,7 +107,7 @@ export function AppSidebar() {
         // MENU SAAT DI DASHBOARD UTAMA ATAU SETTINGS
         currentMainSafe = [
             { title: 'Dashboard Utama', href: '/', icon: Squares2X2Icon },
-            { title: 'Edit Profil', href: '/settings/profile', icon: UsersIcon },
+            { title: 'Settings', href: '/settings/profile', icon: Settings },
         ];
 
         // Tambahkan Menu Manajemen HANYA di sini (tidak muncul saat buka layanan)

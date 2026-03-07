@@ -91,9 +91,9 @@ export default function LendingList({ peminjamans, filters }: Props) {
 
     return (
         <AppLayout>
-            <Head title="Daftar Peminjaman Lab" />
+            <Head title="Validasi Peminjaman Lab" />
             <div className="p-6">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Daftar Peminjaman Lab</h2>
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Validasi Peminjaman Lab</h2>
                 <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">Daftar seluruh peminjaman laboratorium.</p>
 
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">

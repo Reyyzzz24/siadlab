@@ -20,7 +20,7 @@ class StudentController extends Controller
         return Inertia::render('Role/Students', [
             'students' => $query->latest()->get(),
             'filters' => $request->only(['search']),
-        ]);     
+        ]);
     }
 
     public function bulkDestroy(Request $request)
@@ -29,5 +29,27 @@ class StudentController extends Controller
         Mahasiswa::whereIn('id', $request->ids)->delete();
 
         return back()->with('success', 'Data mahasiswa berhasil dihapus.');
+    }
+    public function update(Request $request, $id)
+    {
+        $student = Mahasiswa::findOrFail($id);
+
+        $validated = $request->validate([
+            'nama'          => 'required|string|max:255',
+            'email'         => 'required|email|unique:users,email,' . $student->user_id,
+            'nim'           => 'required|string|unique:mahasiswas,nim,' . $student->id,
+            'program_studi' => 'required|string',
+            'kelas'         => 'required|in:Pagi,Sore',
+            'no_telepon'    => 'nullable|string',
+            'tahun_masuk'    => 'required|digits:4|integer|min:1900|max:' . (date('Y') + 1),
+        ]);
+
+        // Update tabel User (hanya name & email)
+        $student->user->update($request->only(['nama', 'email']));
+
+        // Update tabel Mahasiswa (semua field yang divalidasi + mapping name ke nama)
+        $student->update(array_merge($validated, ['nama' => $validated['nama']]));
+
+        return back()->with('success', "Mahasiswa {$student->nim} berhasil diperbarui!");
     }
 }

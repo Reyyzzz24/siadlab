@@ -29,7 +29,7 @@ export interface SharedData {
         user: User | null;
     };
     flash: Flash;
-    [key: string]: unknown; 
+    [key: string]: unknown;
 }
 
 export interface User {
@@ -37,12 +37,37 @@ export interface User {
     name: string;
     email: string;
     avatar?: string;
-    role: string;
+    profile_photo_path?: string; // Tambahkan ini sesuai database Laravel
+    role: 'mahasiswa' | 'petugas' | 'admin' | 'user' | string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
     created_at: string;
     updated_at: string;
-    [key: string]: unknown; // This allows for additional properties...
+
+    // Definisikan relasi agar TypeScript mengenali propertinya
+    mahasiswa?: {
+        id?: number;
+        nim: string;
+        program_studi: string;
+        kelas: string;
+        no_telepon: string;
+    };
+
+    petugas?: {
+        id?: number;
+        no_induk: string;
+        jabatan: string;
+        bagian: string;
+        no_telepon: string;
+    };
+
+    administrator?: {
+        id?: number;
+        no_induk: string;
+        jabatan: string;
+        bagian: string;
+        no_telepon: string;
+    };
 }
 
 export interface EventItem {

@@ -47,10 +47,14 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
     return (
         <div className="px-4 py-6">
-            <Heading
+            {/* <Heading
                 title="Settings"
                 description="Manage your profile and account settings"
-            />
+            /> */}
+            <header className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Settings</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Manage your profile and account settings.</p>
+            </header>
 
             <div className="flex flex-col lg:flex-row lg:space-x-12">
                 <aside className="w-full max-w-xl lg:w-48">

@@ -39,4 +39,21 @@ class AdministratorController extends Controller
         // Kembali ke halaman sebelumnya dengan pesan sukses
         return back()->with('success', 'Data Administrator berhasil dihapus.');
     }
+    public function update(Request $request, $id)
+    {
+        $admin = Administrator::findOrFail($id);
+
+        $validated = $request->validate([
+            'nama'       => 'required|string|max:255',
+            'email'      => 'required|email|unique:users,email,' . $admin->user_id,
+            'no_induk'   => 'required|string|unique:administrators,no_induk,' . $admin->id,
+            'jabatan'    => 'required|string',
+            'no_telepon' => 'nullable|string',
+        ]);
+
+        $admin->user->update($request->only(['nama', 'email']));
+        $admin->update(array_merge($validated, ['nama' => $validated['nama']]));
+
+        return back()->with('success', "Admin {$admin->no_induk} berhasil diperbarui!");
+    }
 }

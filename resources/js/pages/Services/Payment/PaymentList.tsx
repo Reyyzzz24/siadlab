@@ -159,11 +159,11 @@ export default function PaymentList({ payments, filters }: Props) {
 
     return (
         <AppLayout>
-            <Head title="Daftar Pembayaran" />
+            <Head title="Validasi Pembayaran" />
 
             <div className="p-6">
                 <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                    Daftar Pembayaran
+                    Validasi Pembayaran
                 </h2>
                 <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
                     Daftar seluruh Pembayaran mahasiswa.
@@ -274,7 +274,6 @@ export default function PaymentList({ payments, filters }: Props) {
                         <Tr>
                             <Th center className="w-12">No</Th>
                             <Th>Nama Pembayar</Th>
-                            <Th>Alasan</Th>
                             <Th>Jenis & Kategori</Th>
                             <Th>Nominal</Th>
                             <Th>Status</Th>
@@ -290,9 +289,6 @@ export default function PaymentList({ payments, filters }: Props) {
                                     <Td>
                                         <div className="font-medium capitalize">{p.nama_pembayar}</div>
                                         <div className="text-xs text-gray-400">TRX: #{p.id_transaksi || p.id}</div>
-                                    </Td>
-                                    <Td>
-                                        <div className="text-sm text-gray-700 dark:text-gray-200">{p.alasan || '-'}</div>
                                     </Td>
                                     <Td>
                                         <div className="capitalize">{p.kategori.replace('_', ' ')}</div>

@@ -125,18 +125,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/role/users', [UserRoleController::class, 'index'])->name('role.users')->middleware(\App\Http\Middleware\EnsureAdmin::class);
     Route::put('/role/users/{id}', [UserRoleController::class, 'update'])->name('role.users.update')->middleware(\App\Http\Middleware\EnsureAdmin::class);
     Route::delete('/role/users/bulk-delete', [UserRoleController::class, 'bulkDestroy'])->name('role.users.bulk-delete')->middleware(\App\Http\Middleware\EnsureAdmin::class);
-
+    Route::post('/role/users', [UserRoleController::class, 'store'])->name('role.users.store')->middleware(\App\Http\Middleware\EnsureAdmin::class);
     Route::get('/role/students', [StudentController::class, 'index'])->name('students.index');
 
     // Notifications (API for frontend)
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/mark-read', [NotificationController::class, 'markAllRead'])->name('notifications.markAllRead');
     Route::delete('/role/students/bulk-delete', [StudentController::class, 'bulkDestroy'])->name('students.bulk-delete');
+    Route::put('/role/students/{student}', [StudentController::class, 'update'])->name('students.update');
     Route::get('/role/staff', [StaffController::class, 'index'])->name('staff.index');
     Route::delete('/role/staff/bulk-delete', [StaffController::class, 'bulkDestroy'])->name('staff.bulk-delete');
+    Route::put('/role/staff/{staff}', [StaffController::class, 'update'])->name('staff.update');
     Route::get('/role/administrators', [AdministratorController::class, 'index'])->name('admins.index');
     Route::delete('/admins/bulk-delete', [AdministratorController::class, 'bulkDestroy'])
-    ->name('admins.bulk-delete');
+        ->name('admins.bulk-delete');
+    Route::put('/role/administrators/{administrator}', [AdministratorController::class, 'update'])->name('admins.update');
 });
 
 require __DIR__ . '/settings.php';

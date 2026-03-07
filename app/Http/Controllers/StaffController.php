@@ -32,4 +32,22 @@ class StaffController extends Controller
 
         return back()->with('success', 'Data Petugas berhasil dihapus.');
     }
+    public function update(Request $request, $id)
+    {
+        $staff = Petugas::findOrFail($id); // Sesuaikan nama Model Anda
+
+        $validated = $request->validate([
+            'nama'       => 'required|string|max:255',
+            'email'      => 'required|email|unique:users,email,' . $staff->user_id,
+            'no_induk'   => 'required|string|unique:petugas,no_induk,' . $staff->id,
+            'jabatan'    => 'required|string',
+            'bagian'     => 'required|string',
+            'no_telepon' => 'nullable|string',
+        ]);
+
+        $staff->user->update($request->only(['nama', 'email']));
+        $staff->update(array_merge($validated, ['nama' => $validated['nama']]));
+
+        return back()->with('success', "Staff {$staff->no_induk} berhasil diperbarui!");
+    }
 }

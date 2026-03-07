@@ -12,10 +12,10 @@ import {
     CreditCard,
     Package,
     Archive,
-    FlaskConical
+    FlaskConical,
+    Settings
 } from 'lucide-react';
 import MobileMenu from './MobileMenu';
-import { ProfileEditModal } from '@/components/ui/profile-edit-modal';  
 
 const Navbar: React.FC = () => {
     const { auth, url } = usePage<SharedData>().props;
@@ -43,9 +43,9 @@ const Navbar: React.FC = () => {
     };
 
     const openProfile = () => {
-        window.dispatchEvent(new CustomEvent('show-profile-modal'));
         setIsOpen(false);
         setIsUserMenuOpen(false);
+        router.visit(route('profile.edit'));
     };
 
     return (
@@ -157,7 +157,7 @@ const Navbar: React.FC = () => {
                                         <div className="fixed inset-0 z-[-1]" onClick={() => setIsUserMenuOpen(false)}></div>
                                         <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl py-2 z-50 border border-gray-100 dark:border-slate-700">
                                             <button onClick={openProfile} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2">
-                                                <UserIcon size={16} /> Profile Settings
+                                                <Settings size={16} /> Settings
                                             </button>
                                             <form onSubmit={logout}>
                                                 <button type="submit" className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
@@ -199,7 +199,7 @@ const Navbar: React.FC = () => {
                 logout={logout}
                 openProfile={openProfile}
             />
-            <ProfileEditModal />
+            
         </header>   
     );
 };

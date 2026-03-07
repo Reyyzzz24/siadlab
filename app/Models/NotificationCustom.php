@@ -8,7 +8,7 @@ use App\Models\User;
 
 class NotificationCustom extends Model
 {
-    use HasFactory;
+use HasFactory;
 
     protected $table = 'notifications_custom';
 

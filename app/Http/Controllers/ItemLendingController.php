@@ -52,6 +52,7 @@ class ItemLendingController extends Controller
         }
 
         // 2. Data Chart (Dinamis: Jika mahasiswa, hanya data dia sendiri)
+        // 2. Data Chart
         $chartQuery = PeminjamanBarang::select(
             DB::raw('MONTH(created_at) as month'),
             DB::raw('count(*) as total')
@@ -60,9 +61,16 @@ class ItemLendingController extends Controller
             ->groupBy('month')
             ->orderBy('month');
 
-        if ($user->role === 'mahasiswa') {
+        // PERBAIKAN: Gunakan logika "Kecuali Admin/Petugas" 
+        // atau tambahkan role 'user' ke dalam pengecekan.
+        $adminRoles = ['admin', 'administrator', 'petugas'];
+
+        if (!in_array($user->role, $adminRoles)) {
+            // Jika BUKAN admin/petugas, kunci data hanya milik sendiri
             $chartQuery->where('user_id', $user->id);
         }
+
+        $chartDataRaw = $chartQuery->get();
 
         $chartDataRaw = $chartQuery->get();
         $chartData = array_fill(0, 12, 0);

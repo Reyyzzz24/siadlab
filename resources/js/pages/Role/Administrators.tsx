@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head, router, Link } from '@inertiajs/react';
-import { NoSymbolIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { Head, useForm, router } from '@inertiajs/react';
+import { NoSymbolIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { Table, Thead, Tbody, Tr, Th, Td } from '@/components/ui/table';
 import { SearchInput } from '@/components/SearchInput';
 import { ConfirmDeleteModal } from '@/components/ui/alert';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
+import { Button } from "@/components/ui/button";
+import { Modal } from '@/components/ui/modal';
+import { AdminForm } from './Partials/AdminForm';
 
 interface Admin {
     id: number;
@@ -21,12 +24,26 @@ interface Admin {
 interface Props {
     admins: Admin[];
     filters?: { search?: string };
+    auth: { user: { role: string } };
 }
 
-export default function Administrators({ admins = [], filters = {} }: Props) {
+export default function Administrators({ admins = [], filters = {}, auth }: Props) {
     useFlashMessages();
-    const [params, setParams] = useState({ search: filters?.search || '' });    
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [params, setParams] = useState({ search: filters?.search || '' });
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const isAdminOrPetugas = ['admin', 'petugas'].includes(auth.user.role);
+
+    const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
+        id: null as number | null,
+        no_induk: '',
+        nama: '',
+        jabatan: '',
+        bagian: '',
+        no_telepon: '',
+        email: '',
+    });
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { value } = e.target;
@@ -39,6 +56,36 @@ export default function Administrators({ admins = [], filters = {} }: Props) {
             data: { ids: selectedIds },
             onSuccess: () => setSelectedIds([]),
         });
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isEditMode) {
+            put(route('admins.update', data.id), {
+                onSuccess: () => setIsModalOpen(false),
+            });
+        } else {
+            post(route('admins.store'), {
+                onSuccess: () => {
+                    setIsModalOpen(false);
+                    reset();
+                },
+            });
+        }
+    };
+
+    const openEditModal = (admin: Admin) => {
+        setData({
+            id: admin.id,
+            no_induk: admin.no_induk ?? '', // Tambahkan safety null di sini juga
+            nama: admin.nama ?? '',
+            jabatan: admin.jabatan ?? '',
+            bagian: admin.bagian ?? '',
+            no_telepon: admin.no_telepon ?? '',
+            email: admin.email ?? '',
+        });
+        setIsEditMode(true);
+        setIsModalOpen(true);
     };
 
     return (
@@ -83,9 +130,11 @@ export default function Administrators({ admins = [], filters = {} }: Props) {
                             </Th>
                             <Th>No. Induk</Th>
                             <Th>Nama</Th>
-                            <Th>Jabatan / Bagian</Th>
+                            <Th>Jabatan</Th>
+                            <Th>Bagian</Th>
                             <Th>Telepon</Th>
                             <Th>Email</Th>
+                            <Th center>Aksi</Th>
                         </Tr>
                     </Thead>
                     <Tbody>
@@ -107,18 +156,26 @@ export default function Administrators({ admins = [], filters = {} }: Props) {
                                         {admin.nama}
                                     </Td>
                                     <Td>
-                                        <div className="flex flex-col gap-1">
-                                            <span className="text-sm font-medium">{admin.jabatan}</span>
-                                            <span className="w-fit inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
-                                                {admin.bagian}
-                                            </span>
-                                        </div>
+                                        {admin.jabatan}
                                     </Td>
+                                    <Td> {admin.bagian}</Td>
                                     <Td className="text-sm">
                                         {admin.no_telepon}
                                     </Td>
                                     <Td>
                                         {admin.email}
+                                    </Td>
+                                    <Td center>
+                                        {isAdminOrPetugas && (
+                                            <div className="mt-3">
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => openEditModal(admin)}
+                                                >
+                                                    <PencilSquareIcon className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        )}
                                     </Td>
                                 </Tr>
                             ))
@@ -135,6 +192,40 @@ export default function Administrators({ admins = [], filters = {} }: Props) {
                     </Tbody>
                 </Table>
             </div>
+            <Modal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title={isEditMode ? 'Edit Data Admin' : 'Tambah Admin'}
+                footer={
+                    <>
+                        <Button
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => setIsModalOpen(false)}
+                            disabled={processing}
+                        >
+                            Batal
+                        </Button>
+                        <Button
+                            type="submit"
+                            className="flex-1"
+                            form="admin-form" // Harus sama dengan id di <form> pada AdminForm
+                            disabled={processing}
+                        >
+                            {processing ? 'Memproses...' : (isEditMode ? 'Simpan Perubahan' : 'Tambah Admin')}
+                        </Button>
+                    </>
+                }
+            >
+                <AdminForm
+                    data={data}
+                    setData={setData}
+                    errors={errors}
+                    processing={processing}
+                    isEditMode={isEditMode}
+                    onSubmit={handleSubmit}
+                />
+            </Modal>
         </AppLayout>
     );
 }

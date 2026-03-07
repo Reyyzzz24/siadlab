@@ -21,13 +21,17 @@ class PaymentController extends Controller
         $tahunDipilih = $request->query('year', date('Y'));
         $user = Auth::user();
 
-        // Inisialisasi variabel untuk Mahasiswa
+        // Inisialisasi variabel dashboard mahasiswa
         $totalTagihanAktif = 0;
         $totalSudahDibayar = 0;
         $jatuhTempoTerdekat = '-';
 
-        // 1. Logika Khusus Mahasiswa
-        if ($user && $user->role === 'mahasiswa') {
+        // Role yang dianggap memiliki akses "Melihat Semua Data"
+        $adminRoles = ['admin', 'petugas', 'administrator'];
+        $isStaff = in_array(strtolower($user->role), $adminRoles);
+
+        // 1. Logika Jika Bukan Admin/Petugas (Mahasiswa & User Biasa)
+        if (!$isStaff) {
             $mahasiswa = Mahasiswa::where('user_id', $user->id)->first();
 
             if ($mahasiswa) {
@@ -36,33 +40,28 @@ class PaymentController extends Controller
                     ->where('status', 'belum_bayar')
                     ->sum('nominal');
 
-                // B. Total Sudah Dibayar (Dari tabel pembayarans)
+                // B. Total Sudah Dibayar (Personal History)
                 $totalSudahDibayar = Pembayaran::where('user_id', $user->id)
                     ->where('status', 'lunas')
                     ->sum('nominal');
 
-                // C. Jatuh Tempo Terdekat (Menampilkan yang paling lama belum dibayar)
+                // C. Jatuh Tempo Terdekat
                 $tagihanTerdekat = Tagihan::where('mahasiswa_id', $mahasiswa->id)
                     ->where('status', 'belum_bayar')
-                    ->orderBy('tanggal_jatuh_tempo', 'asc') // Paling lama/mendekati sekarang di atas
+                    ->orderBy('tanggal_jatuh_tempo', 'asc')
                     ->first();
 
                 if ($tagihanTerdekat) {
                     $tgl = \Carbon\Carbon::parse($tagihanTerdekat->tanggal_jatuh_tempo);
                     $labelTerlambat = $tgl->isPast() ? ' (Terlambat)' : '';
-
                     $jatuhTempoTerdekat = $tgl->translatedFormat('d M Y') . $labelTerlambat;
                 } else {
                     $jatuhTempoTerdekat = 'Tidak ada tagihan';
                 }
-
-                $jatuhTempoTerdekat = $tagihanTerdekat
-                    ? \Carbon\Carbon::parse($tagihanTerdekat->tanggal_jatuh_tempo)->translatedFormat('d M Y')
-                    : 'Tidak ada tagihan';
             }
         }
 
-        // 2. Data Chart (Filter berdasarkan user jika mahasiswa)
+        // 2. Data Chart (Filter Ketat: Jika bukan staff, paksa filter user_id)
         $chartQuery = Pembayaran::select(
             DB::raw('MONTH(created_at) as bulan'),
             DB::raw('SUM(nominal) as total')
@@ -71,8 +70,7 @@ class PaymentController extends Controller
             ->where('status', 'lunas')
             ->groupBy('bulan');
 
-        // Jika mahasiswa, chart hanya menampilkan history bayar dia sendiri
-        if ($user->role === 'mahasiswa') {
+        if (!$isStaff) {
             $chartQuery->where('user_id', $user->id);
         }
 
@@ -82,31 +80,25 @@ class PaymentController extends Controller
             $chartData[$data->bulan - 1] = (int) $data->total;
         }
 
-        // 3. Statistik Global (Hanya untuk Admin/Petugas)
-        $totalAdministrator = User::whereIn('role', ['admin', 'petugas'])->count();
-        $totalMahasiswa = User::where('role', 'mahasiswa')->count();
+        // 3. Statistik Global (Hanya hitung jika staff untuk optimasi)
+        $totalAdministrator = $isStaff ? User::whereIn('role', $adminRoles)->count() : 0;
+        $totalMahasiswa = $isStaff ? User::where('role', 'mahasiswa')->count() : 0;
 
         return Inertia::render('Services/Payment/Dashboard', [
-            'auth' => [
-                'user' => $user
-            ],
+            'auth' => ['user' => $user],
             'stats' => [
-                // Data untuk Admin
                 'totalAdministrator' => $totalAdministrator,
                 'totalMahasiswa' => $totalMahasiswa,
-
-                // Data untuk Mahasiswa (Personal)
                 'totalTagihanAktif' => 'Rp ' . number_format($totalTagihanAktif, 0, ',', '.'),
                 'totalSudahDibayar' => 'Rp ' . number_format($totalSudahDibayar, 0, ',', '.'),
                 'jatuhTempoTerdekat' => $jatuhTempoTerdekat,
-
-                // Info lama tetap dikirim atau disesuaikan
-                'totalPembayaran' => 'Rp ' . number_format($totalTagihanAktif, 0, ',', '.'),
+                // Jika untuk admin, total pembayaran mungkin total global
+                'totalPembayaran' => 'Rp ' . number_format($isStaff ? Pembayaran::where('status', 'lunas')->sum('nominal') : $totalSudahDibayar, 0, ',', '.'),
             ],
             'chartData' => $chartData,
             'tahunDipilih' => (int) $tahunDipilih,
-            'latestMahasiswa' => User::where('role', 'mahasiswa')->latest()->first(),
-            'firstAdministrator' => User::whereIn('role', ['admin', 'petugas'])->first(),
+            'latestMahasiswa' => $isStaff ? User::where('role', 'mahasiswa')->latest()->first() : null,
+            'firstAdministrator' => User::whereIn('role', $adminRoles)->first(),
         ]);
     }
 

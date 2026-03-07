@@ -43,21 +43,34 @@ export function AppSidebarHeader({
                     <Modal isOpen={open} onClose={() => setOpen(false)} title={`Notifikasi (${unreadCount})`} maxWidth="md">
                         <div className="space-y-2">
                             {notifications.length === 0 && (
-                                <div className="px-4 py-3 text-sm text-neutral-600">Tidak ada notifikasi</div>
+                                <div className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">
+                                    Tidak ada notifikasi
+                                </div>
                             )}
 
                             {notifications.map((n: any) => (
-                                <div key={n.id} className="px-4 py-3 border-b last:border-b-0">
-                                    <div className="text-sm text-neutral-800">{n.data.message}</div>
+                                <div key={n.id} className="px-4 py-3 border-b border-neutral-100 dark:border-slate-800 last:border-b-0">
+                                    <div className="text-sm text-neutral-800 dark:text-neutral-200">
+                                        {n.data.message}
+                                    </div>
                                     {n.data?.alasan && (
-                                        <div className="text-xs text-neutral-600 mt-1">Alasan: {n.data.alasan}</div>
+                                        <div className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+                                            Alasan: {n.data.alasan}
+                                        </div>
                                     )}
-                                    <div className="text-xs text-neutral-500 mt-1">{new Date(n.created_at).toLocaleString()}</div>
+                                    <div className="text-xs text-neutral-500 dark:text-neutral-500 mt-1">
+                                        {new Date(n.created_at).toLocaleString()}
+                                    </div>
                                 </div>
                             ))}
 
                             <div className="pt-4 text-right">
-                                <button className="text-sm text-primary-600" onClick={markAllRead}>Tandai semua dibaca</button>
+                                <button
+                                    className="text-sm text-primary-600 dark:text-primary-400 font-medium hover:underline"
+                                    onClick={markAllRead}
+                                >
+                                    Tandai semua dibaca
+                                </button>
                             </div>
                         </div>
                     </Modal>
@@ -103,7 +116,7 @@ function useNotifications() {
         try {
             await fetch('/notifications/mark-read', { method: 'POST', headers: { 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '' } });
             fetchNotifications();
-        } catch (e) {}
+        } catch (e) { }
     }
 
     return { notifications, open, setOpen, unreadCount, markAllRead, menuRef };

@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head, router } from '@inertiajs/react';
-import { NoSymbolIcon } from '@heroicons/react/24/outline';
+import { Head, useForm, router } from '@inertiajs/react';
+import { NoSymbolIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { Table, Thead, Tbody, Tr, Th, Td } from '@/components/ui/table';
 import { SearchInput } from '@/components/SearchInput';
 import { ConfirmDeleteModal } from '@/components/ui/alert';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
+import { Button } from "@/components/ui/button";
+import { Modal } from '@/components/ui/modal';
+import { StaffForm } from './Partials/StaffForm';
 
 interface Staff {
     id: number;
@@ -21,12 +24,26 @@ interface Staff {
 interface Props {
     staffs: Staff[];
     filters?: { search?: string };
+    auth: { user: { role: string } };
 }
 
-export default function Staff({ staffs = [], filters = {} }: Props) {
+export default function Staff({ staffs = [], filters = {}, auth }: Props) {
     useFlashMessages();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
     const [params, setParams] = useState({ search: filters?.search || '' });
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const isAdminOrPetugas = ['admin', 'petugas'].includes(auth.user.role);
+
+    const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
+        id: null as number | null,
+        no_induk: '',
+        nama: '',
+        jabatan: '',
+        bagian: '',
+        no_telepon: '',
+        email: '',
+    });
 
     const handleSearchChange = (e: any) => {
         const { value } = e.target;
@@ -39,6 +56,35 @@ export default function Staff({ staffs = [], filters = {} }: Props) {
             data: { ids: selectedIds },
             onSuccess: () => setSelectedIds([]),
         });
+    };
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isEditMode) {
+            put(route('staff.update', data.id), {
+                onSuccess: () => setIsModalOpen(false),
+            });
+        } else {
+            post(route('staff.store'), {
+                onSuccess: () => {
+                    setIsModalOpen(false);
+                    reset();
+                },
+            });
+        }
+    };
+
+    const openEditModal = (staff: Staff) => {
+        setData({
+            id: staff.id,
+            no_induk: staff.no_induk,
+            nama: staff.nama,
+            jabatan: staff.jabatan,
+            bagian: staff.bagian,
+            no_telepon: staff.no_telepon,
+            email: staff.email,
+        });
+        setIsEditMode(true);
+        setIsModalOpen(true);
     };
 
     return (
@@ -84,6 +130,7 @@ export default function Staff({ staffs = [], filters = {} }: Props) {
                             <Th>Bagian</Th>
                             <Th>Telepon</Th>
                             <Th>Email</Th>
+                            <Th center>Aksi</Th>
                         </Tr>
                     </Thead>
                     <Tbody>
@@ -107,6 +154,18 @@ export default function Staff({ staffs = [], filters = {} }: Props) {
                                     </Td>
                                     <Td>{s.no_telepon}</Td>
                                     <Td>{s.email}</Td>
+                                    <Td center>
+                                        {isAdminOrPetugas && (
+                                            <div className="mt-3">
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => openEditModal(s)}
+                                                >
+                                                    <PencilSquareIcon className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </Td>
                                 </Tr>
                             ))
                         ) : (
@@ -122,6 +181,40 @@ export default function Staff({ staffs = [], filters = {} }: Props) {
                     </Tbody>
                 </Table>
             </div>
+            <Modal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title={isEditMode ? 'Edit Data Staff' : 'Tambah Staff'}
+                footer={
+                    <>
+                        <Button
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => setIsModalOpen(false)}
+                            disabled={processing}
+                        >
+                            Batal
+                        </Button>
+                        <Button
+                            type="submit"
+                            className="flex-1"
+                            form="staff-form" // Pastikan ID ini sama dengan yang ada di komponen StaffForm
+                            disabled={processing}
+                        >
+                            {processing ? 'Memproses...' : (isEditMode ? 'Simpan Perubahan' : 'Tambah Staff')}
+                        </Button>
+                    </>
+                }
+            >
+                <StaffForm
+                    data={data}
+                    setData={setData}
+                    errors={errors}
+                    processing={processing}
+                    isEditMode={isEditMode}
+                    onSubmit={handleSubmit}
+                />
+            </Modal>
         </AppLayout>
     );
 }   

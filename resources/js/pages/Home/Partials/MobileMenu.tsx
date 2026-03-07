@@ -10,7 +10,8 @@ import {
     Package,
     Archive,
     FlaskConical,
-    X
+    X,
+    Settings
 } from 'lucide-react';
 
 interface MobileMenuProps {
@@ -163,7 +164,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                                         className="bg-white dark:bg-slate-800 rounded-xl flex flex-col overflow-hidden border border-gray-50 dark:border-slate-700"
                                     >
                                         <button onClick={openProfile} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-cyan-50 dark:hover:bg-slate-700 hover:text-cyan-600">
-                                            <UserIcon className="w-4 h-4" /> Profile Settings
+                                            <Settings className="w-4 h-4" /> Settings
                                         </button>
                                         <form onSubmit={logout}>
                                             <button type="submit" className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">

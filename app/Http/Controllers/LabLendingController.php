@@ -20,27 +20,31 @@ class LabLendingController extends Controller
         $year = $request->input('year', date('Y'));
         $user = Auth::user();
 
-        // Inisialisasi variabel untuk Mahasiswa
+        // 1. Definisikan Role Staff
+        $adminRoles = ['admin', 'administrator', 'petugas'];
+        $isStaff = in_array(strtolower($user->role), $adminRoles);
+
+        // Inisialisasi variabel personal
         $labDigunakan = 0;
         $menungguPersetujuan = 0;
         $jadwalTerdekat = '-';
 
-        // 1. Logika Khusus Mahasiswa
-        if ($user && $user->role === 'mahasiswa') {
-            // A. Lab yang sedang aktif digunakan (Status: process)
+        // 2. Logika Personal (Jika bukan staff, ambil data milik sendiri)
+        if (!$isStaff) {
+            // A. Lab yang sedang aktif (Gunakan konstanta status yang konsisten)
             $labDigunakan = PeminjamanLab::where('user_id', $user->id)
-                ->where('status', 'dipinjam')
+                ->where('status', 'dipinjam') // Pastikan status sesuai database (process/dipinjam)
                 ->count();
 
-            // B. Menunggu Persetujuan (Status: booked)
+            // B. Menunggu Persetujuan
             $menungguPersetujuan = PeminjamanLab::where('user_id', $user->id)
                 ->where('status', 'booked')
                 ->count();
 
-            // C. Jadwal Penggunaan Terdekat (Mengambil 1 data terbaru baik yang akan datang atau baru saja lewat)
+            // C. Jadwal Penggunaan Terdekat
             $peminjamanTerdekat = PeminjamanLab::where('user_id', $user->id)
-                ->whereIn('status', ['booked', 'process', 'selesai']) // Tambahkan 'selesai' jika ingin yang baru lewat tetap tampil
-                ->orderBy('waktu_mulai', 'desc') // Ambil yang paling baru secara urutan waktu
+                ->whereIn('status', ['booked', 'process', 'selesai', 'dipinjam'])
+                ->orderBy('waktu_mulai', 'desc')
                 ->first();
 
             if ($peminjamanTerdekat) {
@@ -50,7 +54,6 @@ class LabLendingController extends Controller
                 if (now()->between($mulai, $selesai)) {
                     $jadwalTerdekat = 'Sedang Berlangsung s/d ' . $selesai->format('H:i');
                 } elseif ($selesai->isPast()) {
-                    // Jika sudah lewat di hari yang sama
                     $jadwalTerdekat = 'Selesai pada ' . $selesai->format('H:i');
                 } elseif ($mulai->isToday()) {
                     $jadwalTerdekat = 'Hari ini: ' . $mulai->format('H:i');
@@ -62,7 +65,7 @@ class LabLendingController extends Controller
             }
         }
 
-        // 2. Data Chart (Dinamis: Jika mahasiswa, hanya data dia sendiri)
+        // 3. Data Chart (Proteksi: Jika bukan staff, PAKSA filter user_id)
         $chartQuery = PeminjamanLab::select(
             DB::raw('MONTH(created_at) as month'),
             DB::raw('count(*) as total')
@@ -71,7 +74,7 @@ class LabLendingController extends Controller
             ->groupBy('month')
             ->orderBy('month');
 
-        if ($user->role === 'mahasiswa') {
+        if (!$isStaff) {
             $chartQuery->where('user_id', $user->id);
         }
 
@@ -81,11 +84,11 @@ class LabLendingController extends Controller
             $chartData[$data->month - 1] = $data->total;
         }
 
-        // 3. Statistik Global & Personal
+        // 4. Susun Statistik (Hanya kirim angka global jika user adalah Staff)
         $stats = [
-            'totalAdministrator' => User::whereIn('role', ['admin', 'administrator'])->count(),
-            'totalMahasiswa'     => User::where('role', 'mahasiswa')->count(),
-            'totalLaboratorium'  => Laboratorium::count(),
+            'totalAdministrator' => $isStaff ? User::whereIn('role', $adminRoles)->count() : 0,
+            'totalMahasiswa'     => $isStaff ? User::where('role', 'mahasiswa')->count() : 0,
+            'totalLaboratorium'  => Laboratorium::count(), // Barang/Ruangan umum biasanya boleh dilihat semua
 
             // Data Mahasiswa
             'labDigunakan'        => $labDigunakan,
@@ -94,14 +97,12 @@ class LabLendingController extends Controller
         ];
 
         return Inertia::render('Services/LabLending/Dashboard', [
-            'auth' => [
-                'user' => $user
-            ],
+            'auth' => ['user' => $user],
             'stats'              => $stats,
             'chartData'          => $chartData,
             'year'               => (int) $year,
-            'latestMahasiswa'    => User::where('role', 'mahasiswa')->latest()->first(),
-            'firstAdministrator' => User::whereIn('role', ['admin', 'administrator'])->first(),
+            'latestMahasiswa'    => $isStaff ? User::where('role', 'mahasiswa')->latest()->first() : null,
+            'firstAdministrator' => User::whereIn('role', $adminRoles)->first(),
         ]);
     }
 

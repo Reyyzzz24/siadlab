@@ -114,12 +114,12 @@ export default function LendingList({ peminjamans, filters }: Props) {
 
     return (
         <AppLayout>
-            <Head title="Daftar Peminjaman Barang" />
+            <Head title="Validasi Peminjaman Barang" />
 
             <div className="p-6">
                 <div className="mb-6">
                     <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                        Daftar Peminjaman Barang
+                        Validasi Peminjaman Barang
                     </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                         Kelola permintaan dan status peminjaman barang inventaris.

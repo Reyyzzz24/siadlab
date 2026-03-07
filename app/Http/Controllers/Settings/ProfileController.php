@@ -108,6 +108,7 @@ class ProfileController extends Controller
                     'jabatan'    => $request->jabatan,
                     'bagian'     => $request->bagian,
                     'no_telepon' => $request->no_telepon,
+                    'email'      => $request->email,
                 ]
             );
         } elseif ($user->role === 'admin') {
@@ -119,6 +120,7 @@ class ProfileController extends Controller
                     'jabatan'    => $request->jabatan,
                     'bagian'     => $request->bagian,
                     'no_telepon' => $request->no_telepon,
+                    'email'      => $request->email,
                 ]
             );
         }

@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head, router } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
+import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { NoSymbolIcon } from '@heroicons/react/24/outline';
 import { Table, Thead, Tbody, Tr, Th, Td } from '@/components/ui/table';
 import { SearchInput } from '@/components/SearchInput';
 import { ConfirmDeleteModal } from '@/components/ui/alert';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
+import { Button } from "@/components/ui/button";
+import { Modal } from '@/components/ui/modal';
+import { StudentForm } from './Partials/StudentForm';
 
 interface Student {
     id: number;
@@ -21,12 +25,27 @@ interface Student {
 interface Props {
     students: Student[];
     filters?: { search?: string };
+    auth: { user: { role: string } };
 }
 
-export default function Students({ students = [], filters = {} }: Props) {
+export default function Students({ students = [], filters = {}, auth }: Props) {
     useFlashMessages();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
     const [params, setParams] = useState({ search: filters?.search || '' });
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const isAdminOrPetugas = ['admin', 'petugas'].includes(auth.user.role);
+
+    const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
+        id: null as number | null,
+        nim: '',
+        nama: '',
+        program_studi: '',
+        kelas: '',
+        tahun_masuk: '' as string | number,
+        no_telepon: '',
+        email: '',
+    });
 
     const handleSearchChange = (e: any) => {
         const { value } = e.target;
@@ -39,6 +58,37 @@ export default function Students({ students = [], filters = {} }: Props) {
             data: { ids: selectedIds },
             onSuccess: () => setSelectedIds([]),
         });
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isEditMode) {
+            put(route('students.update', data.id), {
+                onSuccess: () => setIsModalOpen(false),
+            });
+        } else {
+            post(route('students.store'), {
+                onSuccess: () => {
+                    setIsModalOpen(false);
+                    reset();
+                },
+            });
+        }
+    };
+
+    const openEditModal = (student: Student) => {
+        setData({
+            id: student.id,
+            nim: student.nim,
+            nama: student.nama,
+            program_studi: student.program_studi,
+            kelas: student.kelas,
+            tahun_masuk: student.tahun_masuk,
+            no_telepon: student.no_telepon,
+            email: student.email,
+        });
+        setIsEditMode(true);
+        setIsModalOpen(true);
     };
 
     return (
@@ -86,6 +136,7 @@ export default function Students({ students = [], filters = {} }: Props) {
                             <Th center>Tahun</Th>
                             <Th>Telepon</Th>
                             <Th>Email</Th>
+                            <Th center>Aksi</Th>
                         </Tr>
                     </Thead>
                     <Tbody>
@@ -106,6 +157,18 @@ export default function Students({ students = [], filters = {} }: Props) {
                                     <Td center>{s.tahun_masuk}</Td>
                                     <Td>{s.no_telepon}</Td>
                                     <Td>{s.email}</Td>
+                                    <Td center>
+                                        {isAdminOrPetugas && (
+                                            <div className="mt-3">
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => openEditModal(s)}
+                                                >
+                                                    <PencilSquareIcon className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </Td>
                                 </Tr>
                             ))
                         ) : (
@@ -121,6 +184,40 @@ export default function Students({ students = [], filters = {} }: Props) {
                     </Tbody>
                 </Table>
             </div>
+            <Modal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title={isEditMode ? 'Edit Data Mahasiswa' : 'Tambah Mahasiswa'}
+                footer={
+                    <>
+                        <Button
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => setIsModalOpen(false)}
+                            disabled={processing}
+                        >
+                            Batal
+                        </Button>
+                        <Button
+                            type="submit"
+                            className="flex-1"
+                            form="student-form" // Pastikan ID ini sama dengan yang ada di komponen StudentForm
+                            disabled={processing}
+                        >
+                            {processing ? 'Memproses...' : (isEditMode ? 'Simpan Perubahan' : 'Tambah Mahasiswa')}
+                        </Button>
+                    </>
+                }
+            >
+                <StudentForm
+                    data={data}
+                    setData={setData}
+                    errors={errors}
+                    processing={processing}
+                    isEditMode={isEditMode}
+                    onSubmit={handleSubmit}
+                />
+            </Modal>
         </AppLayout>
     );
 }

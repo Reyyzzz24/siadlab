@@ -141,7 +141,7 @@ export default function Tuition({ spps, filters }: Props) {
         <AppLayout>
             <Head title="Master SPP" />
             <div className="p-6">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Master SPP</h2>
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Biaya Akademik</h2>
                 <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">Kelola kategori pembayaran dan nominal SPP</p>
 
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
