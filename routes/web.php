@@ -4,6 +4,9 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\EventController; // Pastikan ini diimport
+use App\Http\Controllers\NavbarController;
+use App\Http\Controllers\HeroSectionController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ItemLendingController;
 use App\Http\Controllers\LabLendingController;
@@ -13,17 +16,27 @@ use App\Http\Controllers\UserRoleController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\AdministratorController;
+use App\Http\Controllers\AdminPanelController;
+use App\Http\Middleware\EnsureAdminOrPetugas;
 
 // --- GUEST ROUTES ---
 // Mengarahkan data events ke Home/Index agar bisa dibaca komponen UpcomingEvent
-Route::get('/', [EventController::class, 'index'])->name('home');
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 // --- AUTHENTICATED ROUTES ---
 Route::middleware(['auth', 'verified'])->group(function () {
     // 0. Event Management Routes (Tambahkan Ini)
     Route::post('/events', [EventController::class, 'store'])->name('events.store');
-    Route::delete('/events/{event}', [EventController::class, 'destroy'])->name('events.destroy');
+    Route::delete('events/bulk-delete', [EventController::class, 'bulkDestroy'])->name('events.bulk-delete');
     Route::post('/events/{event}/update', [EventController::class, 'update'])->name('events.update');
+
+    Route::post('/navbars', [NavbarController::class, 'store'])->name('navbars.store');
+    Route::delete('/navbars/bulk-delete', [NavbarController::class, 'bulkDestroy'])->name('navbars.bulk-delete');
+    Route::post('/navbars/{navbar}/update', [NavbarController::class, 'update'])->name('navbars.update');
+
+    Route::post('/hero-sections', [HeroSectionController::class, 'store'])->name('hero-sections.store');
+    Route::delete('/hero-sections/bulk-delete', [HeroSectionController::class, 'bulkDestroy'])->name('hero-sections.bulk-delete');
+    Route::post('/hero-sections/{heroSection}/update', [HeroSectionController::class, 'update'])->name('hero-sections.update');
 
     // 1. Payment Services
     Route::middleware(['auth'])->prefix('payment')->name('payment.')->group(function () {
@@ -121,25 +134,41 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('mail.download');
     });
 
-    // 5. Role Management (Admin only)
-    Route::get('/role/users', [UserRoleController::class, 'index'])->name('role.users')->middleware(\App\Http\Middleware\EnsureAdmin::class);
-    Route::put('/role/users/{id}', [UserRoleController::class, 'update'])->name('role.users.update')->middleware(\App\Http\Middleware\EnsureAdmin::class);
-    Route::delete('/role/users/bulk-delete', [UserRoleController::class, 'bulkDestroy'])->name('role.users.bulk-delete')->middleware(\App\Http\Middleware\EnsureAdmin::class);
-    Route::post('/role/users', [UserRoleController::class, 'store'])->name('role.users.store')->middleware(\App\Http\Middleware\EnsureAdmin::class);
-    Route::get('/role/students', [StudentController::class, 'index'])->name('students.index');
+    Route::prefix('admin')->middleware(EnsureAdminOrPetugas::class)->group(function () {
 
-    // Notifications (API for frontend)
+        // Halaman Index Admin (Jika Anda ingin ada dashboard khusus admin)
+        Route::get('/dashboard', [AdminPanelController::class, 'index'])->name('admin.dashboard');
+
+        // Data Mahasiswa
+        Route::get('/students', [StudentController::class, 'index'])->name('students.index');
+        Route::put('/students/{student}', [StudentController::class, 'update'])->name('students.update');
+        Route::delete('/students/bulk-delete', [StudentController::class, 'bulkDestroy'])->name('students.bulk-delete');
+
+        // Data Staff
+        Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
+        Route::put('/staff/{staff}', [StaffController::class, 'update'])->name('staff.update');
+        Route::delete('/staff/bulk-delete', [StaffController::class, 'bulkDestroy'])->name('staff.bulk-delete');
+
+        // Data Administrator
+        Route::get('/administrators', [AdministratorController::class, 'index'])->name('admins.index');
+        Route::put('/administrators/{administrator}', [AdministratorController::class, 'update'])->name('admins.update');
+        Route::delete('/administrators/bulk-delete', [AdministratorController::class, 'bulkDestroy'])->name('admins.bulk-delete');
+
+        // Manajemen Role
+        Route::get('/role/users', [UserRoleController::class, 'index'])->name('role.users');
+        Route::post('/role/users', [UserRoleController::class, 'store'])->name('role.users.store');
+        Route::put('/role/users/{id}', [UserRoleController::class, 'update'])->name('role.users.update');
+        Route::delete('/role/users/bulk-delete', [UserRoleController::class, 'bulkDestroy'])->name('role.users.bulk-delete');
+
+        // Manajemen Event
+        Route::get('/home/events', [EventController::class, 'manage'])->name('admin.home.events');
+        Route::get('/home/navbar', [NavbarController::class, 'manage'])->name('admin.home.navbars');
+        Route::get('/home/hero-sections', [HeroSectionController::class, 'manage'])->name('admin.home.hero-sections');
+    });
+
+    // 4. Notifications & Settings
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/mark-read', [NotificationController::class, 'markAllRead'])->name('notifications.markAllRead');
-    Route::delete('/role/students/bulk-delete', [StudentController::class, 'bulkDestroy'])->name('students.bulk-delete');
-    Route::put('/role/students/{student}', [StudentController::class, 'update'])->name('students.update');
-    Route::get('/role/staff', [StaffController::class, 'index'])->name('staff.index');
-    Route::delete('/role/staff/bulk-delete', [StaffController::class, 'bulkDestroy'])->name('staff.bulk-delete');
-    Route::put('/role/staff/{staff}', [StaffController::class, 'update'])->name('staff.update');
-    Route::get('/role/administrators', [AdministratorController::class, 'index'])->name('admins.index');
-    Route::delete('/admins/bulk-delete', [AdministratorController::class, 'bulkDestroy'])
-        ->name('admins.bulk-delete');
-    Route::put('/role/administrators/{administrator}', [AdministratorController::class, 'update'])->name('admins.update');
 });
 
 require __DIR__ . '/settings.php';

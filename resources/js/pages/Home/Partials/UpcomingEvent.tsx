@@ -2,11 +2,10 @@ import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { usePage, useForm, router } from '@inertiajs/react';
 import { SharedData, EventItem } from '@/types';
 import { Plus, Edit2, Trash2, Calendar, MapPin } from 'lucide-react';
-import { Button } from "@/components/ui/button";
 import { useFlashMessages } from '@/hooks/useFlashMessages';
 import { Modal } from "@/components/ui/modal";
-import { EventDetailContent } from "@/components/ui/UpcomingEvent/EventDetailContent";
-import { EventForm } from "@/components/ui/UpcomingEvent/EventForm";
+import { EventDetailContent } from "@/pages/Home/Partials/Event Partials/EventDetailContent";
+import { EventForm } from "@/pages/Admin/Home/EventForm/EventForm";
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import {
     Card,
@@ -126,23 +125,6 @@ const EventCard = React.memo(({ event, isAdmin, onDetail, onDelete, onEdit }: {
                 >
                     Lihat Detail →
                 </button>
-
-                {isAdmin && (
-                    <div className="flex gap-4">
-                        <button
-                            onClick={() => onEdit(event)}
-                            className="text-yellow-600 hover:text-yellow-700 dark:text-yellow-500 transition-transform active:scale-90"
-                        >
-                            <Edit2 size={18} />
-                        </button>
-                        <button
-                            onClick={() => onDelete(event.id)}
-                            className="text-red-500 hover:text-red-700 dark:text-red-400 transition-transform active:scale-90"
-                        >
-                            <Trash2 size={18} />
-                        </button>
-                    </div>
-                )}
             </CardFooter>
         </Card>
     </motion.div>
@@ -239,11 +221,6 @@ const UpcomingEvent: React.FC<Props> = ({ events = [] }) => {
                     className="flex items-center justify-between mb-10"
                 >
                     <h2 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-zinc-100">Upcoming Event</h2>
-                    {isAdmin && (
-                        <Button onClick={() => { reset(); setIsCreateModalOpen(true); }} className="gap-2 shadow-lg hover:scale-105 transition-transform duration-300">
-                            <Plus size={18} /> Tambah Event
-                        </Button>
-                    )}
                 </motion.div>
 
                 {/* Published Events */}
@@ -357,71 +334,6 @@ const UpcomingEvent: React.FC<Props> = ({ events = [] }) => {
             {/* Modals */}
             <Modal isOpen={!!selectedEvent} onClose={() => setSelectedEvent(null)} maxWidth="3xl" noPadding>
                 {selectedEvent && <EventDetailContent event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
-            </Modal>
-
-            {/* --- MODAL CREATE --- */}
-            <Modal
-                isOpen={isCreateModalOpen}
-                onClose={() => { setIsCreateModalOpen(false); reset(); }}
-                title="Tambah Event Baru"
-                maxWidth="lg"
-                footer={
-                    <>
-                        <Button
-                            variant="outline" // Tambah variant outline di sini
-                            className="flex-1"
-                            onClick={() => { setIsCreateModalOpen(false); reset(); }}
-                            disabled={processing}
-                        >
-                            Batal
-                        </Button>
-                        <Button
-                            onClick={handleSubmit}
-                            className="flex-1"
-                            disabled={processing}
-                        >
-                            {processing ? 'Menyimpan...' : 'Tambah Event'}
-                        </Button>
-                    </>
-                }
-            >
-                <EventForm data={data} setData={setData} errors={errors} processing={processing} />
-            </Modal>
-
-            {/* --- MODAL EDIT --- */}
-            <Modal
-                isOpen={isEditModalOpen}
-                onClose={() => { setIsEditModalOpen(false); reset(); }}
-                title="Edit Event"
-                maxWidth="lg"
-                footer={
-                    <>
-                        <Button
-                            variant="outline" // Tambah variant outline di sini
-                            className="flex-1"
-                            onClick={() => { setIsEditModalOpen(false); reset(); }}
-                            disabled={processing}
-                        >
-                            Batal
-                        </Button>
-                        <Button
-                            className="flex-1"
-                            onClick={handleUpdate}
-                            disabled={processing}
-                        >
-                            {processing ? 'Menyimpan...' : 'Simpan Perubahan'}
-                        </Button>
-                    </>
-                }
-            >
-                <EventForm
-                    isEdit
-                    currentPoster={editingEvent?.poster}
-                    data={data}
-                    setData={setData}
-                    errors={errors}
-                    processing={processing}
-                />
             </Modal>
         </section>
     );

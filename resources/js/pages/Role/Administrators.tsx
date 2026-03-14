@@ -9,6 +9,7 @@ import { useFlashMessages } from '@/hooks/useFlashMessages';
 import { Button } from "@/components/ui/button";
 import { Modal } from '@/components/ui/modal';
 import { AdminForm } from './Partials/AdminForm';
+import { TablePagination } from '@/components/ui/table-pagination';
 
 interface Admin {
     id: number;
@@ -29,6 +30,9 @@ interface Props {
 
 export default function Administrators({ admins = [], filters = {}, auth }: Props) {
     useFlashMessages();
+    const [page, setPage] = useState(1);
+    const perPage = 10;
+    const totalData = admins.length;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [params, setParams] = useState({ search: filters?.search || '' });

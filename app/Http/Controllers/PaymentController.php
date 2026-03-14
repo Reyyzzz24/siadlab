@@ -10,7 +10,7 @@ use App\Models\Mahasiswa;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use App\Models\SPP;
+use App\Models\Spp;
 use Carbon\Carbon;
 use App\Models\NotificationCustom;
 

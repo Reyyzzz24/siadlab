@@ -6,15 +6,16 @@ import {
     DocumentTextIcon,
     CreditCardIcon,
     UsersIcon,
-    BookOpenIcon,
-    FolderIcon,
     ArchiveBoxIcon,
+    FolderIcon,
     BeakerIcon,
     InboxIcon,
     PaperAirplaneIcon,
     ClockIcon,
     HomeIcon,
-    FingerPrintIcon
+    FingerPrintIcon,
+    CalendarIcon,
+    TagIcon,
 } from '@heroicons/react/24/outline';
 
 import { NavFooter } from '@/components/nav-footer';
@@ -31,7 +32,7 @@ import {
 } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import AppLogo from './app-logo';
-import { Settings, ShieldCheckIcon } from 'lucide-react';
+import { Settings, ShieldCheckIcon, LayoutDashboard } from 'lucide-react';
 
 export function AppSidebar() {
     const { url, props } = usePage() as any;
@@ -40,7 +41,7 @@ export function AppSidebar() {
     const role = auth?.user?.role;
     const isAllowedRole = ['admin', 'petugas'].includes(role);
 
-    // 1. Menu Layanan Payment
+    // 1. Menu Layanan (Tetap sama)
     const paymentNavItems: NavItem[] = [
         { title: 'Dashboard', href: '/payment/dashboard', icon: Squares2X2Icon },
         { title: 'Keuangan', href: '/payment/finance', icon: WalletIcon },
@@ -51,7 +52,6 @@ export function AppSidebar() {
         { title: 'Biaya Akademik', href: '/payment/tuition', icon: AcademicCapIcon },
     ];
 
-    // 2. Menu Layanan Item Lending
     const itemLendingNavItems: NavItem[] = [
         { title: 'Dashboard', href: '/item-lending/dashboard', icon: Squares2X2Icon },
         { title: 'Katalog Barang', href: '/item-lending/items', icon: ArchiveBoxIcon },
@@ -60,7 +60,6 @@ export function AppSidebar() {
         { title: 'Riwayat Pinjam', href: '/item-lending/history', icon: ClockIcon },
     ];
 
-    // 3. Menu Layanan Lab Lending
     const labLendingNavItems: NavItem[] = [
         { title: 'Dashboard', href: '/lab-lending/dashboard', icon: Squares2X2Icon },
         { title: 'Daftar Lab', href: '/lab-lending/laboratories', icon: BeakerIcon },
@@ -69,7 +68,6 @@ export function AppSidebar() {
         { title: 'Riwayat', href: '/lab-lending/history', icon: ClockIcon },
     ];
 
-    // 4. Menu Mail Archive
     const mailArchiveNavItems: NavItem[] = [
         { title: 'Dashboard', href: '/mail-archive/dashboard', icon: Squares2X2Icon },
         { title: 'Surat Masuk', href: '/mail-archive/incoming', icon: InboxIcon },
@@ -77,55 +75,64 @@ export function AppSidebar() {
     ];
 
     // LOGIKA PENENTUAN MENU
-    let currentMainSafe: NavItem[] = [];
     let headerLink: string = '/';
     let isSubService = false;
 
+    let adminHomeItems: NavItem[] = [];
+    let adminMasterItems: NavItem[] = [];
+    let currentMainSafe: NavItem[] = []; // Untuk layanan lain (payment, dll)
+
     if (currentUrl.startsWith('/payment')) {
-        currentMainSafe = isAllowedRole
-            ? paymentNavItems
-            : paymentNavItems.filter(i => !['/payment/invoice','/payment/finance', '/payment/list', '/payment/tuition'].includes(String(i.href)));
+        currentMainSafe = isAllowedRole ? paymentNavItems : paymentNavItems.filter(i => !['/payment/invoice', '/payment/finance', '/payment/list', '/payment/tuition'].includes(String(i.href)));
         headerLink = '/payment/dashboard';
         isSubService = true;
-    } 
+    }
     else if (currentUrl.startsWith('/item-lending')) {
         currentMainSafe = isAllowedRole ? itemLendingNavItems : itemLendingNavItems.filter(i => i.href !== '/item-lending/list');
         headerLink = '/item-lending/dashboard';
         isSubService = true;
-    } 
+    }
     else if (currentUrl.startsWith('/lab-lending')) {
         currentMainSafe = isAllowedRole ? labLendingNavItems : labLendingNavItems.filter(i => i.href !== '/lab-lending/list');
         headerLink = '/lab-lending/dashboard';
         isSubService = true;
-    } 
+    }
     else if (currentUrl.startsWith('/mail-archive')) {
         currentMainSafe = mailArchiveNavItems;
         headerLink = '/mail-archive/dashboard';
         isSubService = true;
-    } 
-    else {
-        // MENU SAAT DI DASHBOARD UTAMA ATAU SETTINGS
-        currentMainSafe = [
-            { title: 'Dashboard Utama', href: '/', icon: Squares2X2Icon },
-            { title: 'Settings', href: '/settings/profile', icon: Settings },
+    }
+    else if (currentUrl.startsWith('/admin')) {
+        headerLink = '/admin';
+        isSubService = true;
+
+        // Grup 1: Home
+        adminHomeItems = [
+            { title: 'Dashboard', href: '/admin/dashboard', icon: Squares2X2Icon },
+            { title: 'Events', href: route('admin.home.events'), icon: CalendarIcon },
+            { title: 'Navbars', href: route('admin.home.navbars'), icon: LayoutDashboard },
+            { title: 'Hero Sections', href: route('admin.home.hero-sections'), icon: TagIcon }
         ];
 
-        // Tambahkan Menu Manajemen HANYA di sini (tidak muncul saat buka layanan)
+        // Grup 2: Data Master
         if (isAllowedRole) {
-            currentMainSafe.push({
-                title: 'Data Mahasiswa',
-                href: route('students.index'),
-                icon: AcademicCapIcon
-            });
+            adminMasterItems.push({ title: 'Data Mahasiswa', href: route('students.index'), icon: AcademicCapIcon });
         }
         if (role === 'admin') {
-            currentMainSafe.push(
+            adminMasterItems.push(
                 { title: 'Data Staff', href: route('staff.index'), icon: UsersIcon },
                 { title: 'Administrators', href: route('admins.index'), icon: FingerPrintIcon },
                 { title: 'Manajemen Role', href: route('role.users'), icon: ShieldCheckIcon }
             );
         }
-        headerLink = '/';
+    } else {
+        currentMainSafe = [
+            { title: 'Dashboard Utama', href: '/', icon: Squares2X2Icon },
+            { title: 'Settings', href: '/settings/profile', icon: Settings },
+        ];
+        if (isAllowedRole) {
+            currentMainSafe.push({ title: 'Admin Panel', href: '/admin/dashboard', icon: ShieldCheckIcon });
+        }
     }
 
     const footerNavItems: NavItem[] = [
@@ -138,7 +145,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={String(headerLink)} prefetch>
+                            <Link href={headerLink} prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -147,7 +154,33 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={currentMainSafe} />
+                {currentUrl.startsWith('/admin') ? (
+                    <>
+                        <NavMain label="Home" items={adminHomeItems} />
+                        {adminMasterItems.length > 0 && <NavMain label="Data Master" items={adminMasterItems} />}
+                    </>
+                ) : (
+                    <>
+                        {/* Gunakan currentMainSafe untuk semua layanan */}
+                        {currentUrl.startsWith('/payment') && (
+                            <NavMain label="Layanan Pembayaran" items={currentMainSafe} />
+                        )}
+                        {currentUrl.startsWith('/item-lending') && (
+                            <NavMain label="Layanan Peminjaman Barang" items={currentMainSafe} />
+                        )}
+                        {currentUrl.startsWith('/lab-lending') && (
+                            <NavMain label="Layanan Peminjaman Lab" items={currentMainSafe} />
+                        )}
+                        {currentUrl.startsWith('/mail-archive') && (
+                            <NavMain label="Layanan Arsip Surat" items={currentMainSafe} />
+                        )}
+
+                        {/* Untuk Dashboard Utama */}
+                        {!['/payment', '/item-lending', '/lab-lending', '/mail-archive'].some(path => currentUrl.startsWith(path)) && (
+                            <NavMain label="Menu Utama" items={currentMainSafe} />
+                        )}
+                    </>
+                )}
             </SidebarContent>
 
             <SidebarFooter>

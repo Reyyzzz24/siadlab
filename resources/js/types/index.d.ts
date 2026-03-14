@@ -80,6 +80,19 @@ export interface EventItem {
     lokasi: string;
 }
 
+export interface HeroSection {
+    id: number;
+    title: string;
+    subtitle?: string;
+    image_path?: string;
+    cta_text?: string;
+    cta_link?: string;
+    position: number;
+    is_active: boolean;
+    created_at?: string;
+    updated_at?: string;
+}
+
 export interface Flash {
     success?: string;
     error?: string;

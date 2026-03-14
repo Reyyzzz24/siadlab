@@ -9,6 +9,7 @@ import { ConfirmDeleteModal } from '@/components/ui/alert';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
 import { Modal } from '@/components/ui/modal'; // Pastikan import Modal
 import { UserForm } from './Partials/UserForm'; // Pastikan import UserForm
+import { TablePagination } from '@/components/ui/table-pagination';
 
 interface User {
     id: number;
@@ -25,6 +26,9 @@ interface Props {
 
 export default function Users({ users = [], filters = {}, auth }: Props) {
     useFlashMessages();
+    const [page, setPage] = useState(1);
+    const perPage = 10;
+    const totalData = users.length;
     const [params, setParams] = useState({ search: filters?.search || '' });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);

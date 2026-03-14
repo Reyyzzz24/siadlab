@@ -1,56 +1,45 @@
 import React, { useEffect } from 'react';
-import { Link } from '@inertiajs/react';
-import { Link as ScrollLink } from 'react-scroll';
+import { Link, usePage } from '@inertiajs/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    ChevronDown,
-    User as UserIcon,
-    LogOut,
-    CreditCard,
-    Package,
-    Archive,
-    FlaskConical,
-    X,
-    Settings
-} from 'lucide-react';
+import { ChevronDown, LogOut, Settings } from 'lucide-react';
+import { SharedData } from '@/types';
+
+// Tambahkan interface untuk struktur navbar
+interface NavbarItem {
+    id: number;
+    title: string;
+    url: string;
+    parent_id: number | null;
+}
 
 interface MobileMenuProps {
     isOpen: boolean;
     setIsOpen: (val: boolean) => void;
-    isLayananOpen: boolean;
-    setIsLayananOpen: (val: boolean) => void;
-    isUserMenuOpen: boolean;
-    setIsUserMenuOpen: (val: boolean) => void;
+    // Mengelola status dropdown secara lokal berdasarkan ID
     auth: any;
     logout: (e: React.FormEvent) => void;
     openProfile: () => void;
 }
 
-const MobileMenu: React.FC<MobileMenuProps> = ({
-    isOpen, setIsOpen,
-    isLayananOpen, setIsLayananOpen,
-    isUserMenuOpen, setIsUserMenuOpen,
-    auth, logout, openProfile
-}) => {
+const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, setIsOpen, auth, logout, openProfile }) => {
+    // Ambil navbars dari shared props Inertia
+    const { navbars } = usePage<SharedData & { navbars: NavbarItem[] }>().props;
+    const [openDropdowns, setOpenDropdowns] = React.useState<Record<number, boolean>>({});
+    const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
+
+    const toggleDropdown = (id: number) => {
+        setOpenDropdowns(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-
-        // Reset overflow saat unmount
-        return () => {
-            document.body.style.overflow = '';
-        };
+        document.body.style.overflow = isOpen ? 'hidden' : '';
+        return () => { document.body.style.overflow = ''; };
     }, [isOpen]);
 
     return (
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="sync">
             {isOpen && (
                 <>
-                    {/* 1. Backdrop Overlay - Menghilangkan kesan transparan kosong */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -58,81 +47,54 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                         onClick={() => setIsOpen(false)}
                         className="fixed inset-0 bg-black/60 z-[80] lg:hidden"
                     />
-
-                    {/* 2. Main Canvas Panel */}
                     <motion.div
-                        initial={{ x: '100%' }} // Mulai benar-benar dari luar layar
-                        animate={{ x: 0 }}      // Meluncur masuk
-                        exit={{ x: '100%' }}    // Meluncur keluar saat ditutup
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed top-0 right-0 w-72 h-screen bg-white dark:bg-slate-900 z-[90] flex flex-col p-6 pt-24 space-y-4 shadow-2xl lg:hidden overflow-y-auto"
+                        className="fixed top-0 right-0 w-72 h-screen bg-white dark:bg-slate-900 z-[90] flex flex-col p-6 pt-24 shadow-2xl lg:hidden overflow-y-auto"
                     >
-
                         <nav className="flex flex-col space-y-1">
-                            <ScrollLink
-                                to="hero"
-                                smooth={true}
-                                duration={800}
-                                offset={-80}
-                                onClick={() => setIsOpen(false)}
-                                className="px-4 py-3 text-gray-700 dark:text-gray-200 font-medium hover:bg-cyan-50 dark:hover:bg-slate-800 hover:text-cyan-600 dark:hover:text-cyan-400 rounded-xl cursor-pointer block"
-                            >
-                                Beranda
-                            </ScrollLink>
+                            {navbars.filter(n => !n.parent_id).map((item) => {
+                                const children = navbars.filter(n => n.parent_id === item.id);
+                                const hasChildren = children.length > 0;
 
-                            <ScrollLink
-                                to="about"
-                                smooth={true}
-                                duration={800}
-                                offset={-80}
-                                onClick={() => setIsOpen(false)}
-                                className="px-4 py-3 text-gray-700 dark:text-gray-200 font-medium hover:bg-cyan-50 dark:hover:bg-slate-800 hover:text-cyan-600 dark:hover:text-cyan-400 rounded-xl cursor-pointer block"
-                            >
-                                Tentang Kami
-                            </ScrollLink>
+                                return (
+                                    <div key={item.id} className="flex flex-col">
+                                        {hasChildren ? (
+                                            <button
+                                                onClick={() => toggleDropdown(item.id)}
+                                                className="flex items-center justify-between px-4 py-3 text-gray-700 dark:text-gray-200 font-medium hover:bg-cyan-50 dark:hover:bg-slate-800 rounded-xl"
+                                            >
+                                                <span>{item.title}</span>
+                                                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${openDropdowns[item.id] ? 'rotate-180' : ''}`} />
+                                            </button>
+                                        ) : (
+                                            <Link
+                                                href={item.url}
+                                                onClick={() => setIsOpen(false)}
+                                                className="px-4 py-3 text-gray-700 dark:text-gray-200 font-medium hover:bg-cyan-50 dark:hover:bg-slate-800 rounded-xl block"
+                                            >
+                                                {item.title}
+                                            </Link>
+                                        )}
 
-                            {/* Layanan Dropdown Mobile */}
-                            <div className="flex flex-col">
-                                <button
-                                    onClick={() => setIsLayananOpen(!isLayananOpen)}
-                                    className="flex items-center justify-between px-4 py-3 text-gray-700 dark:text-gray-200 font-medium hover:bg-cyan-50 dark:hover:bg-slate-800 rounded-xl"
-                                >
-                                    <span>Layanan</span>
-                                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isLayananOpen ? 'rotate-180' : ''}`} />
-                                </button>
-
-                                <motion.div
-                                    initial={false}
-                                    animate={{ height: isLayananOpen ? 'auto' : 0, opacity: isLayananOpen ? 1 : 0 }}
-                                    className="pl-6 flex flex-col space-y-1 border-l-2 border-cyan-100 dark:border-slate-700 ml-4 overflow-hidden"
-                                >
-                                    <Link href={route('payment.dashboard')} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-cyan-600">
-                                        <CreditCard size={14} /> Pembayaran
-                                    </Link>
-                                    <Link href={route('item-lending.dashboard')} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-cyan-600">
-                                        <Package size={14} /> Peminjaman Barang
-                                    </Link>
-                                    {auth?.user && ['admin', 'petugas'].includes(auth.user.role) && (
-                                        <Link href={route('mail-archive.dashboard')} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-cyan-600">
-                                            <Archive size={14} /> Arsip Surat
-                                        </Link>
-                                    )}
-                                    <Link href={route('lab-lending.dashboard')} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-cyan-600">
-                                        <FlaskConical size={14} /> Peminjaman Lab
-                                    </Link>
-                                </motion.div>
-                            </div>
-
-                            <ScrollLink
-                                to="contact"
-                                smooth={true}
-                                duration={800}
-                                offset={-80}
-                                onClick={() => setIsOpen(false)}
-                                className="px-4 py-3 text-gray-700 dark:text-gray-200 font-medium hover:bg-cyan-50 dark:hover:bg-slate-800 hover:text-cyan-600 dark:hover:text-cyan-400 rounded-xl cursor-pointer block"
-                            >
-                                Kontak Kami
-                            </ScrollLink>
+                                        {hasChildren && (
+                                            <motion.div
+                                                initial={false}
+                                                animate={{ height: openDropdowns[item.id] ? 'auto' : 0, opacity: openDropdowns[item.id] ? 1 : 0 }}
+                                                className="pl-6 flex flex-col space-y-1 border-l-2 border-cyan-100 dark:border-slate-700 ml-4 overflow-hidden"
+                                            >
+                                                {children.map(child => (
+                                                    <Link key={child.id} href={child.url} onClick={() => setIsOpen(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-cyan-600">
+                                                        {child.title}
+                                                    </Link>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </nav>
 
                         <hr className="border-gray-100 dark:border-slate-800 my-4" />
@@ -146,15 +108,23 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
                                         onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                                         className="w-full flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 transition-all"
                                     >
-                                        <img
-                                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(auth.user.name)}&background=22d3ee&color=fff`}
-                                            className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-600 shadow-sm"
-                                            alt="Profile"
-                                        />
+                                        <div className="w-10 h-10 flex-shrink-0 rounded-full border-2 border-white dark:border-slate-600 shadow-sm overflow-hidden bg-cyan-500 aspect-square">
+                                            <img
+                                                src={
+                                                    auth.user.profile_photo_path
+                                                        ? `/storage/${auth.user.profile_photo_path}`
+                                                        : `https://ui-avatars.com/api/?name=${encodeURIComponent(auth.user.name)}&background=22d3ee&color=fff`
+                                                }
+                                                className="w-full h-full object-cover"
+                                                alt={auth.user.name}
+                                            />
+                                        </div>
+
                                         <div className="flex flex-col text-left">
                                             <span className="text-sm font-bold text-gray-800 dark:text-white truncate w-28">{auth.user.name}</span>
                                             <span className="text-xs text-gray-500 dark:text-slate-400 uppercase">{auth.user.role}</span>
                                         </div>
+
                                         <ChevronDown className={`w-4 h-4 ml-auto text-gray-400 transition-transform duration-300 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                                     </button>
 

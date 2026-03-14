@@ -13,7 +13,7 @@ const Footer: React.FC = () => {
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
                 {/* Border atas yang menyesuaikan warna di mode gelap */}
                 <div className="flex justify-center border-t border-gray-200 dark:border-zinc-600/50 pt-8">
-                    <p className="text-center text-sm leading-6 text-gray-400 dark:text-zinc-500">
+                    <p className="text-center text-sm leading-6 text-gray-400 dark:text-zinc-500">Developed By Reva Yulian Satria.
                         &copy; {currentYear} SIADLAB. All rights reserved.
                     </p>
                 </div>

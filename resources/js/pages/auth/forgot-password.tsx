@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { login } from '@/routes';
 import { email } from '@/routes/password';
 import { motion } from 'framer-motion';
+import AppLogoIcon from '@/components/app-logo-icon';
 
 export default function ForgotPassword({ status }: { status?: string }) {
     return (
@@ -78,9 +79,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                         {/* Logo & Brand */}
                         <div className="mb-10">
                             <a href="/" className="flex items-center space-x-2 text-xl font-bold text-gray-900 dark:text-white">
-                                <svg className="h-8 w-auto text-yellow-600 dark:text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18s-3.332.477-4.5 1.253" />
-                                </svg>
+                               <AppLogoIcon className="h-8 w-auto" />
                                 <span>SIADLAB</span>
                             </a>
                         </div>

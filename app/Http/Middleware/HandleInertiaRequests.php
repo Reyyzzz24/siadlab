@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
+use App\Models\Navbar;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -38,9 +39,12 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
+            'navbars' => Navbar::where('is_active', true)
+                ->orderBy('order_priority', 'asc')
+                ->get(),
             'auth' => [
                 'user' => $request->user() ? $request->user()->load(['mahasiswa', 'petugas', 'administrator']) : null,
-            ],      
+            ],
             'ziggy' => fn() => [
                 // Gunakan class Ziggy langsung karena sudah di-import di atas
                 ...(new Ziggy)->toArray(),

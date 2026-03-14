@@ -1,14 +1,20 @@
-import { BookOpen } from 'lucide-react';
-import { SVGAttributes } from 'react';
+// resources/js/Components/app-logo-icon.tsx
+import { ImgHTMLAttributes } from 'react';
 
-export default function AppLogoIcon(props: SVGAttributes<SVGElement>) {
-    // Kita menggunakan spread props agar class, style, atau ukuran 
-    // yang dikirim dari parent tetap berfungsi
+interface AppLogoIconProps extends ImgHTMLAttributes<HTMLImageElement> {
+    forceInvert?: boolean; // Properti baru untuk memaksa logo jadi putih (invert)
+}
+
+export default function AppLogoIcon({ forceInvert, className, ...props }: AppLogoIconProps) {
     return (
-        <BookOpen 
-            {...(props as any)} 
-            // Default size jika tidak ditentukan di parent
-            size={props.width || 32} 
+        <img 
+            {...props} 
+            src="/images/logo.png" 
+            alt="SIADLAB Logo"
+            width={props.width || 32} 
+            className={`object-contain transition-all duration-300 ${className || ''} ${
+                forceInvert ? 'invert' : 'dark:invert invert-0'
+            }`}
         />
     );
 }

@@ -55,7 +55,7 @@ export function ConfirmDeleteModal({
   title = "Apakah Anda yakin?",
   description,
 }: ConfirmDeleteModalProps) {
-  
+
   if (selectedCount === 0) return null
 
   return (
@@ -66,7 +66,7 @@ export function ConfirmDeleteModal({
           Hapus ({selectedCount})
         </Button>
       </AlertDialogTrigger>
-      
+
       {/* Menggunakan styling yang mirip dengan Alert Destructive Anda */}
       <AlertDialogContent className="max-w-[400px]">
         <AlertDialogHeader>
@@ -77,11 +77,11 @@ export function ConfirmDeleteModal({
             </AlertDialogTitle>
           </div>
           <AlertDialogDescription className="pt-2 text-sm text-muted-foreground">
-            {description || 
+            {description ||
               `Tindakan ini akan menghapus ${selectedCount} item secara permanen. Data yang sudah dihapus tidak dapat dikembalikan.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        
+
         <AlertDialogFooter className="mt-4">
           <AlertDialogCancel disabled={isLoading}>Batal</AlertDialogCancel>
           <AlertDialogAction
@@ -90,7 +90,7 @@ export function ConfirmDeleteModal({
               onConfirm()
             }}
             // Menyesuaikan dengan warna destructive-foreground dari alert.tsx
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="bg-red-600 text-white hover:bg-red-700"
             disabled={isLoading}
           >
             {isLoading ? "Menghapus..." : "Ya, Hapus"}

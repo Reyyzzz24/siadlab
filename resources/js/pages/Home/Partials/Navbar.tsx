@@ -16,13 +16,30 @@ import {
     Settings
 } from 'lucide-react';
 import MobileMenu from './MobileMenu';
+import AppLogo from '@/components/app-logo';
+import AppLogoIcon from '@/components/app-logo-icon';
+
+interface NavbarItem {
+    id: number;
+    title: string;
+    url: string;
+    parent_id: number | null; // Tambahkan ini
+}
 
 const Navbar: React.FC = () => {
-    const { auth, url } = usePage<SharedData>().props;
+    const { auth, url, navbars } = usePage<SharedData & { navbars: NavbarItem[] }>().props;
     const [isOpen, setIsOpen] = useState(false);
     const [isLayananOpen, setIsLayananOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+    const mainMenus = navbars.filter(n => !n.parent_id);
+    const subMenus = navbars.filter(n => n.parent_id !== null);
+
+    const [openDropdowns, setOpenDropdowns] = useState<Record<number, boolean>>({});
+
+    const toggleDropdown = (id: number, isOpen: boolean) => {
+        setOpenDropdowns(prev => ({ ...prev, [id]: isOpen }));
+    };
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -59,73 +76,59 @@ const Navbar: React.FC = () => {
                 {/* Logo */}
                 <div className="flex lg:flex-1">
                     <Link href="/" className="flex items-center gap-2">
-                        <BookOpen className="h-8 w-auto text-white" />
+                        <AppLogoIcon
+                            className="h-8 w-auto"
+                            forceInvert={true}
+                        />
                         <span className="text-xl font-bold text-white">SIADLAB</span>
                     </Link>
                 </div>
 
                 {/* Desktop Menu */}
                 <div className="hidden lg:flex lg:gap-x-8 items-center">
-                    <ScrollLink
-                        to="hero"
-                        smooth={true}
-                        duration={800}
-                        offset={-80}
-                        className="text-sm font-semibold text-white hover:text-cyan-200 dark:hover:text-cyan-400 cursor-pointer"
-                    >
-                        Beranda
-                    </ScrollLink>
-                    <ScrollLink
-                        to="about"
-                        smooth={true}
-                        duration={800}
-                        offset={-80}
-                        className="text-sm font-semibold text-white hover:text-cyan-200 dark:hover:text-cyan-400 cursor-pointer"
-                    >
-                        Tentang Kami
-                    </ScrollLink>
+                    {mainMenus.map((item) => {
+                        const children = navbars.filter(n => n.parent_id === item.id);
+                        const hasChildren = children.length > 0;
 
-                    {/* Dropdown Layanan Desktop */}
-                    <div className="relative py-2"
-                        onMouseEnter={() => setIsLayananOpen(true)}
-                        onMouseLeave={() => setIsLayananOpen(false)}>
+                        if (hasChildren) {
+                            return (
+                                <div
+                                    key={item.id}
+                                    className="relative py-2"
+                                    onMouseEnter={() => toggleDropdown(item.id, true)}
+                                    onMouseLeave={() => toggleDropdown(item.id, false)}
+                                >
+                                    <button className="text-sm font-semibold text-white flex items-center gap-1 hover:text-cyan-200">
+                                        {item.title} <ChevronDown size={14} className={openDropdowns[item.id] ? 'rotate-180' : ''} />
+                                    </button>
 
-                        <button className="text-sm font-semibold text-white flex items-center gap-1 hover:text-cyan-200">
-                            Layanan <ChevronDown size={14} className={`transition-transform duration-200 ${isLayananOpen ? 'rotate-180' : ''}`} />
-                        </button>
+                                    {openDropdowns[item.id] && (
+                                        <div className="absolute left-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl py-2 z-50 border border-gray-100 dark:border-slate-700">
+                                            {children.map(child => (
+                                                <Link
+                                                    key={child.id}
+                                                    href={child.url}
+                                                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-cyan-50 dark:hover:bg-slate-700"
+                                                >
+                                                    {child.title}
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }
 
-                        {isLayananOpen && (
-                            <div className="absolute left-0 mt-0 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl py-2 z-50 border border-gray-100 dark:border-slate-700">
-                                <Link href={route('payment.dashboard')} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-cyan-50 dark:hover:bg-slate-700">
-                                    <CreditCard size={16} className="text-cyan-600 dark:text-cyan-400" /> Pembayaran
-                                </Link>
-
-                                <Link href={route('item-lending.dashboard')} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-cyan-50 dark:hover:bg-slate-700">
-                                    <Package size={16} className="text-cyan-600 dark:text-cyan-400" /> Peminjaman Barang
-                                </Link>
-
-                                {auth?.user && ['admin', 'petugas'].includes(auth.user.role) && (
-                                    <Link href={route('mail-archive.dashboard')} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-cyan-50 dark:hover:bg-slate-700">
-                                        <Archive size={16} className="text-cyan-600 dark:text-cyan-400" /> Arsip Surat
-                                    </Link>
-                                )}
-
-                                <Link href={route('lab-lending.dashboard')} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-cyan-50 dark:hover:bg-slate-700">
-                                    <FlaskConical size={16} className="text-cyan-600 dark:text-cyan-400" /> Peminjaman Lab
-                                </Link>
-                            </div>
-                        )}
-                    </div>
-
-                    <ScrollLink
-                        to="contact"
-                        smooth={true}
-                        duration={800}
-                        offset={-80}
-                        className="text-sm font-semibold text-white hover:text-cyan-200 dark:hover:text-cyan-400 cursor-pointer"
-                    >
-                        Kontak Kami
-                    </ScrollLink>
+                        return (
+                            <Link
+                                key={item.id}
+                                href={item.url}
+                                className="text-sm font-semibold text-white hover:text-cyan-200 transition-colors"
+                            >
+                                {item.title}
+                            </Link>
+                        );
+                    })}
                 </div>
 
                 {/* Desktop User Menu */}
@@ -184,23 +187,19 @@ const Navbar: React.FC = () => {
                     <div className={`w-6 h-0.5 transition-all duration-300 transform origin-center ${isOpen ? 'rotate-45 translate-y-2 bg-gray-800 dark:bg-white' : 'bg-white'}`}></div>
                     <div className={`w-6 h-0.5 transition-all duration-300 ${isOpen ? 'opacity-0 -translate-x-2' : 'bg-white'}`}></div>
                     <div className={`w-6 h-0.5 transition-all duration-300 transform origin-center ${isOpen ? '-rotate-45 -translate-y-2 bg-gray-800 dark:bg-white' : 'bg-white'}`}></div>
-                </button>   
+                </button>
             </nav>
 
             {/* Panggil Komponen Mobile Menu */}
             <MobileMenu
                 isOpen={isOpen}
                 setIsOpen={setIsOpen}
-                isLayananOpen={isLayananOpen}
-                setIsLayananOpen={setIsLayananOpen}
-                isUserMenuOpen={isUserMenuOpen}
-                setIsUserMenuOpen={setIsUserMenuOpen}
                 auth={auth}
                 logout={logout}
                 openProfile={openProfile}
             />
-            
-        </header>   
+
+        </header>
     );
 };
 

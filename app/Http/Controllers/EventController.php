@@ -13,28 +13,28 @@ class EventController extends Controller
     /**
      * Menampilkan daftar event.
      */
-    public function index(Request $request)
-    {
-        $user = Auth::user();
-        $today = now()->toDateString();
-        $isAdmin = $user && in_array($user->role, ['admin', 'petugas']);
 
-        $events = Event::query()
-            // Jika ada request ?status=trash dan user adalah admin, tampilkan sampah
-            ->when($request->status === 'trash' && $isAdmin, function ($query) {
-                return $query->onlyTrashed();
-            })
-            // Filter untuk user umum (non-admin)
-            ->when(!$isAdmin, function ($query) use ($today) {
-                return $query->where('status', 'published')
-                             ->where('tanggal', '>=', $today);
-            })
-            ->orderBy('tanggal', 'asc')
+    public function manage(Request $request)
+    {
+        // 1. Ambil query builder
+        $query = Event::query();
+
+        // 2. Tambahkan filter pencarian
+        if ($request->has('search') && $request->search) {
+            $query->where('judul', 'like', '%' . $request->search . '%');
+        }
+
+        // 3. Tambahkan filter lainnya
+        $events = $query->when($request->status === 'trash', function ($query) {
+            return $query->onlyTrashed();
+        })
+            ->orderBy('tanggal', 'desc')
             ->get();
 
-        return Inertia::render('Home/Index', [
+        return Inertia::render('Admin/Home/Events', [
             'events' => $events,
-            'filters' => $request->only(['status'])
+            // Tambahkan 'search' ke dalam filters agar tersinkronisasi
+            'filters' => $request->only(['status', 'search'])
         ]);
     }
 
@@ -47,12 +47,9 @@ class EventController extends Controller
             'judul' => 'required|string|max:255',
             'deskripsi' => 'required|string',
             'tanggal' => 'required|date',
-            'lokasi' => 'required|string|max:255', // TAMBAHAN LOKASI
+            'lokasi' => 'required|string|max:255',
             'poster' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2560',
             'status' => 'required|in:draft,published',
-        ], [
-            'poster.max' => 'Maaf, gambar yang kamu upload terlalu besar, maksimal 2.5MB',
-            'lokasi.required' => 'Lokasi event harus diisi',
         ]);
 
         if ($request->hasFile('poster')) {
@@ -62,6 +59,7 @@ class EventController extends Controller
 
         Event::create($validated);
 
+        // Redirect ke route manajemen agar list terupdate
         return redirect()->back()->with('success', 'Event berhasil dibuat!');
     }
 
@@ -74,22 +72,18 @@ class EventController extends Controller
             'judul' => 'required|string|max:255',
             'deskripsi' => 'required|string',
             'tanggal' => 'required|date',
+            'lokasi' => 'required|string|max:255', // Pastikan lokasi juga divalidasi di sini
             'poster' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2560',
             'status' => 'required|in:draft,published',
-        ], [
-            'poster.max' => 'Maaf, gambar yang kamu upload terlalu besar, maksimal 2.5MB',
         ]);
 
         if ($request->hasFile('poster')) {
-            // Hapus poster lama hanya jika ada upload baru
             if ($event->poster) {
                 Storage::disk('public')->delete($event->poster);
             }
-
             $path = $request->file('poster')->store('events', 'public');
             $validated['poster'] = $path;
         } else {
-            // Tetap gunakan poster lama jika tidak ada file baru diupload
             unset($validated['poster']);
         }
 
@@ -101,12 +95,18 @@ class EventController extends Controller
     /**
      * Memindahkan event ke Trash (Soft Delete).
      */
-    public function destroy(Event $event)
+    public function bulkDestroy(Request $request)
     {
-        // Jangan hapus poster di sini agar bisa di-restore
-        $event->delete();
+        // Validasi bahwa 'ids' dikirim dan berupa array
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:events,id', // Pastikan setiap ID ada di tabel
+        ]);
 
-        return redirect()->back()->with('success', 'Event berhasil dipindahkan ke tempat sampah!');
+        // Lakukan soft delete untuk semua ID yang dikirim
+        Event::whereIn('id', $validated['ids'])->delete();
+
+        return redirect()->back()->with('success', 'Event terpilih berhasil dipindahkan ke tempat sampah!');
     }
 
     /**

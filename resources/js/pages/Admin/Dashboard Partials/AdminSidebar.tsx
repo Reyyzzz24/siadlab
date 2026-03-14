@@ -1,34 +1,24 @@
+// resources/js/Components/Admin/AdminSidebar.tsx
 import { router } from '@inertiajs/react';
-import { useState } from 'react'; // Pastikan diimport
+import { useState } from 'react';
 
-export const LendingSidebar = ({ roleLabel, user, latestMahasiswa }: any) => {
-    // 1. Pindahkan state ke dalam komponen
-    const [isLayananOpen, setIsLayananOpen] = useState(false);
-    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-
-    // 2. Definisikan fungsi di dalam komponen
+export const AdminSidebar = ({ roleLabel, user }: any) => {
     const openProfile = () => {
-        setIsUserMenuOpen(false);
         router.get(route('profile.edit'));
     };
 
-    // 3. Gunakan return untuk merender JSX
     return (
         <div className="w-full lg:w-80 lg:shrink-0 space-y-6">
             {/* User Role Card */}
             <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow border border-gray-100 dark:border-gray-700">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <p className="font-semibold mb-1 text-gray-900 dark:text-gray-100">{roleLabel}</p>
-                        <p className="text-sm text-gray-700 dark:text-gray-400 truncate">{user?.email || 'admin@gmail.com'}</p>
-                        {(user?.nama || user?.name) && (
-                            <p className="text-xs text-gray-500 mt-1 truncate">{user?.nama || user?.name}</p>
-                        )}
-                    </div>
-                </div>
+                <p className="font-semibold mb-1 text-gray-900 dark:text-gray-100">{roleLabel}</p>
+                <p className="text-sm text-gray-700 dark:text-gray-400 truncate">{user?.email || 'admin@gmail.com'}</p>
+                {(user?.nama || user?.name) && (
+                    <p className="text-xs text-gray-500 mt-1 truncate">{user?.nama || user?.name}</p>
+                )}
             </div>
 
-            {/* Latest Mahasiswa Card */}
+            {/* Profile Action Card */}
             <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow border border-gray-100 dark:border-gray-700">
                 <p className="font-semibold mb-1 text-gray-900 dark:text-gray-100">Lengkapi Profil Anda</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
