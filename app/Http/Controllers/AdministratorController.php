@@ -19,8 +19,11 @@ class AdministratorController extends Controller
             });
         }
 
+        // Paginate administrators and preserve query string for links
+        $admins = $query->latest()->paginate(10)->withQueryString();
+
         return Inertia::render('Role/Administrators', [
-            'admins' => $query->latest()->get(),
+            'admins' => $admins,
             'filters' => $request->only(['search']),
         ]);
     }

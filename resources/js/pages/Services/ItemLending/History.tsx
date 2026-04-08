@@ -40,9 +40,17 @@ interface Peminjaman {
 interface Props {
     peminjamans: {
         data: Peminjaman[];
-        links: any[];
+        links: {
+            url: string | null;
+            label: string;
+            active: boolean;
+        }[];
         current_page: number;
         from: number;
+        to: number;
+        total: number;
+        per_page: number;
+        last_page?: number;
     };
     filters: {
         status?: string;
@@ -304,9 +312,9 @@ export default function LendingHistory({ peminjamans, filters }: Props) {
                     </div>
                 </div>
 
-                <div className="mt-8">
-                    <Pagination links={peminjamans.links} />
-                </div>
+                {peminjamans && peminjamans.total > 0 && (
+                    <Pagination meta={peminjamans} />
+                )}
             </div>
 
             <DetailModal

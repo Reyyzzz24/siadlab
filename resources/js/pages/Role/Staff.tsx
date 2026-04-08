@@ -3,6 +3,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { NoSymbolIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { Table, Thead, Tbody, Tr, Th, Td } from '@/components/ui/table';
+import { Pagination } from '@/components/Pagination';
 import { SearchInput } from '@/components/SearchInput';
 import { ConfirmDeleteModal } from '@/components/ui/alert';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
@@ -22,7 +23,7 @@ interface Staff {
 }
 
 interface Props {
-    staffs: Staff[];
+    staffs: any;
     filters?: { search?: string };
     auth: { user: { role: string } };
 }
@@ -32,8 +33,15 @@ export default function Staff({ staffs = [], filters = {}, auth }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [params, setParams] = useState({ search: filters?.search || '' });
+    const perPage = 10;
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const isAdminOrPetugas = ['admin', 'petugas'].includes(auth.user.role);
+    const items: Staff[] = Array.isArray(staffs) ? staffs : (staffs?.data ?? []);
+    const links = !Array.isArray(staffs) && staffs?.links ? staffs.links : [];
+    const meta = !Array.isArray(staffs) && staffs?.meta ? staffs.meta : null;
+    const currentPage = meta ? meta.current_page : parseInt(new URLSearchParams(window.location.search).get('page') || '1', 10);
+    const currentPerPage = meta ? meta.per_page : perPage;
+    const indexBase = (currentPage - 1) * currentPerPage;
 
     const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
         id: null as number | null,
@@ -120,10 +128,11 @@ export default function Staff({ staffs = [], filters = {}, auth }: Props) {
                             <Th className="w-12">
                                 <input
                                     type="checkbox"
-                                    onChange={(e) => setSelectedIds(e.target.checked ? staffs.map(s => s.id) : [])}
-                                    checked={selectedIds.length === staffs.length && staffs.length > 0}
+                                    onChange={(e) => setSelectedIds(e.target.checked ? items.map((s: Staff) => s.id) : [])}
+                                    checked={selectedIds.length === items.length && items.length > 0}
                                 />
                             </Th>
+                            <Th center>No</Th>
                             <Th>No. Induk</Th>
                             <Th>Nama</Th>
                             <Th>Jabatan</Th>
@@ -134,8 +143,8 @@ export default function Staff({ staffs = [], filters = {}, auth }: Props) {
                         </Tr>
                     </Thead>
                     <Tbody>
-                        {staffs.length > 0 ? (
-                            staffs.map((s) => (
+                        {items.length > 0 ? (
+                            items.map((s: Staff) => (
                                 <Tr key={s.id}>
                                     <Td>
                                         <input
@@ -144,6 +153,7 @@ export default function Staff({ staffs = [], filters = {}, auth }: Props) {
                                             onChange={() => setSelectedIds(prev => prev.includes(s.id) ? prev.filter(i => i !== s.id) : [...prev, s.id])}
                                         />
                                     </Td>
+                                    <Td center>{indexBase + items.indexOf(s) + 1}</Td>
                                     <Td>{s.no_induk}</Td>
                                     <Td className="font-medium text-gray-900 dark:text-white">{s.nama}</Td>
                                     <Td>{s.jabatan}</Td>
@@ -170,7 +180,7 @@ export default function Staff({ staffs = [], filters = {}, auth }: Props) {
                             ))
                         ) : (
                             <Tr>
-                                <Td colSpan={7} className="text-center py-20">
+                                <Td colSpan={9} className="text-center py-20">
                                     <div className="flex flex-col items-center text-gray-400">
                                         <NoSymbolIcon className="w-10 h-10 mb-2" />
                                         <p>Data staff tidak ditemukan</p>
@@ -180,6 +190,9 @@ export default function Staff({ staffs = [], filters = {}, auth }: Props) {
                         )}
                     </Tbody>
                 </Table>
+                {staffs && staffs.total > 0 && (
+                    <Pagination meta={staffs} />
+                )}
             </div>
             <Modal
                 isOpen={isModalOpen}

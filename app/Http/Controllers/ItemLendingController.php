@@ -14,6 +14,9 @@ use Carbon\Carbon;
 use App\Models\Petugas;
 use App\Models\Administrator;
 use App\Models\NotificationCustom;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ItemsExport;
+use App\Imports\ItemsImport;
 
 class ItemLendingController extends Controller
 {
@@ -134,6 +137,97 @@ class ItemLendingController extends Controller
             'barangs' => $barangs,
             'filters' => $filters
         ]);
+    }
+
+    // Export items (CSV or XLSX)
+    public function exportItems(Request $request)
+    {
+        $format = $request->query('format', 'csv');
+
+        if (in_array($format, ['xlsx', 'xls'])) {
+            if (!class_exists('\\Maatwebsite\\Excel\\Facades\\Excel') || !class_exists(ItemsExport::class)) {
+                return back()->with('error', 'Excel export tidak tersedia. Pasang paket maatwebsite/excel.');
+            }
+
+            $fileName = 'items_' . now()->format('Ymd_His') . '.' . ($format === 'xls' ? 'xls' : 'xlsx');
+            return Excel::download(new ItemsExport(), $fileName);
+        }
+
+        $fileName = 'items_' . now()->format('Ymd_His') . '.csv';
+        return response()->streamDownload(function () {
+            $handle = fopen('php://output', 'w');
+            // BOM
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($handle, ['idbarang', 'namabarang', 'kategori', 'tanggal_masuk', 'status', 'hargabarang', 'stok']);
+
+            \App\Models\Barang::orderBy('namabarang')->chunk(200, function ($items) use ($handle) {
+                foreach ($items as $it) {
+                    fputcsv($handle, [$it->idbarang, $it->namabarang, $it->kategori, $it->tanggal_masuk, $it->status, $it->hargabarang, $it->stok]);
+                }
+            });
+
+            fclose($handle);
+        }, $fileName, ['Content-Type' => 'text/csv']);
+    }
+
+    // Import items (CSV or XLSX)
+    public function importItems(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt,xls,xlsx',
+        ]);
+
+        $file = $request->file('file');
+
+        if (class_exists('Maatwebsite\\Excel\\Facades\\Excel') && class_exists(ItemsImport::class)) {
+            try {
+                Excel::import(new ItemsImport(), $file);
+                return back()->with('success', 'Import items berhasil.');
+            } catch (\Throwable $e) {
+                return back()->with('error', 'Gagal import items: ' . $e->getMessage());
+            }
+        }
+
+        // Fallback CSV parsing
+        $ext = strtolower($file->getClientOriginalExtension() ?? '');
+        if (in_array($ext, ['csv', 'txt'])) {
+            $path = $file->getRealPath();
+            $handle = fopen($path, 'r');
+            if ($handle === false) return back()->with('error', 'Gagal membuka file.');
+
+            $header = fgetcsv($handle);
+            if (!$header) { fclose($handle); return back()->with('error', 'File kosong.'); }
+
+            $rows = 0;
+            while (($row = fgetcsv($handle)) !== false) {
+                $data = array_combine($header, $row);
+                if (!$data) continue;
+
+                $id = $data['idbarang'] ?? null;
+                if (!$id) continue;
+
+                $attrs = [];
+                if (isset($data['namabarang'])) $attrs['namabarang'] = $data['namabarang'];
+                if (isset($data['kategori'])) $attrs['kategori'] = $data['kategori'];
+                if (isset($data['tanggal_masuk'])) $attrs['tanggal_masuk'] = $data['tanggal_masuk'];
+                if (isset($data['status'])) $attrs['status'] = $data['status'];
+                if (isset($data['hargabarang'])) $attrs['hargabarang'] = $data['hargabarang'];
+                if (isset($data['stok'])) $attrs['stok'] = $data['stok'];
+
+                $existing = Barang::where('idbarang', $id)->first();
+                if ($existing) {
+                    $existing->update($attrs);
+                } else {
+                    $attrs['idbarang'] = $id;
+                    Barang::create($attrs);
+                }
+                $rows++;
+            }
+            fclose($handle);
+            return back()->with('success', "Import CSV selesai. Rows processed: {$rows}");
+        }
+
+        return back()->with('error', 'Import tidak didukung. Pasang maatwebsite/excel untuk XLSX.');
     }
     public function storeItem(Request $request)
     {

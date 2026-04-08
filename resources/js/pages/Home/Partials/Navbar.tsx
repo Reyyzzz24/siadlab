@@ -3,39 +3,28 @@ import { Link, usePage, router } from '@inertiajs/react';
 import { SharedData } from '@/types';
 import { Link as ScrollLink } from 'react-scroll';
 import {
-    BookOpen,
     ChevronDown,
-    Menu,
-    X,
-    User as UserIcon,
     LogOut,
-    CreditCard,
-    Package,
-    Archive,
-    FlaskConical,
     Settings
 } from 'lucide-react';
 import MobileMenu from './MobileMenu';
-import AppLogo from '@/components/app-logo';
 import AppLogoIcon from '@/components/app-logo-icon';
 
 interface NavbarItem {
     id: number;
     title: string;
     url: string;
-    parent_id: number | null; // Tambahkan ini
+    parent_id: number | null;
 }
 
 const Navbar: React.FC = () => {
     const { auth, url, navbars } = usePage<SharedData & { navbars: NavbarItem[] }>().props;
     const [isOpen, setIsOpen] = useState(false);
-    const [isLayananOpen, setIsLayananOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
-    const mainMenus = navbars.filter(n => !n.parent_id);
-    const subMenus = navbars.filter(n => n.parent_id !== null);
-
     const [openDropdowns, setOpenDropdowns] = useState<Record<number, boolean>>({});
+
+    const mainMenus = navbars.filter(n => !n.parent_id);
 
     const toggleDropdown = (id: number, isOpen: boolean) => {
         setOpenDropdowns(prev => ({ ...prev, [id]: isOpen }));
@@ -47,22 +36,54 @@ const Navbar: React.FC = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Menutup semua menu ketika navigasi terjadi (perubahan URL)
     useEffect(() => {
         setIsOpen(false);
         setIsUserMenuOpen(false);
-        setIsLayananOpen(false);
     }, [url]);
 
-    const logout = (e: React.FormEvent) => {
+    const handleLogout = (e: React.FormEvent) => {
         e.preventDefault();
-        router.post(route('logout'));
+        if (auth.user?.portal_id) {
+            router.post(route('sso.logout'));
+        } else {
+            router.post(route('logout'));
+        }
     };
 
     const openProfile = () => {
         setIsOpen(false);
         setIsUserMenuOpen(false);
         router.visit(route('profile.edit'));
+    };
+
+    // Fungsi Helper untuk render Link yang tepat
+    const renderNavLink = (item: NavbarItem, className: string) => {
+        const isAnchor = item.url.startsWith('#');
+
+        if (isAnchor) {
+            return (
+                <ScrollLink
+                    key={item.id}
+                    to={item.url.replace('#', '')}
+                    smooth={true}
+                    duration={500}
+                    offset={-80} // Penyesuaian tinggi navbar agar tidak menutupi judul section
+                    className={`${className} cursor-pointer`}
+                >
+                    {item.title}
+                </ScrollLink>
+            );
+        }
+
+        return (
+            <Link
+                key={item.id}
+                href={item.url}
+                className={className}
+            >
+                {item.title}
+            </Link>
+        );
     };
 
     return (
@@ -73,13 +94,9 @@ const Navbar: React.FC = () => {
                 }`}
         >
             <nav className="flex items-center justify-between p-6 lg:px-8 max-w-7xl mx-auto">
-                {/* Logo */}
                 <div className="flex lg:flex-1">
                     <Link href="/" className="flex items-center gap-2">
-                        <AppLogoIcon
-                            className="h-8 w-auto"
-                            forceInvert={true}
-                        />
+                        <AppLogoIcon className="h-8 w-auto" forceInvert={true} />
                         <span className="text-xl font-bold text-white">SIADLAB</span>
                     </Link>
                 </div>
@@ -99,35 +116,23 @@ const Navbar: React.FC = () => {
                                     onMouseLeave={() => toggleDropdown(item.id, false)}
                                 >
                                     <button className="text-sm font-semibold text-white flex items-center gap-1 hover:text-cyan-200">
-                                        {item.title} <ChevronDown size={14} className={openDropdowns[item.id] ? 'rotate-180' : ''} />
+                                        {item.title}
+                                        <ChevronDown
+                                            size={14}
+                                            className={`transition-transform duration-200 ${openDropdowns[item.id] ? 'rotate-180' : ''}`}
+                                        />
                                     </button>
 
                                     {openDropdowns[item.id] && (
                                         <div className="absolute left-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl py-2 z-50 border border-gray-100 dark:border-slate-700">
-                                            {children.map(child => (
-                                                <Link
-                                                    key={child.id}
-                                                    href={child.url}
-                                                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-cyan-50 dark:hover:bg-slate-700"
-                                                >
-                                                    {child.title}
-                                                </Link>
-                                            ))}
+                                            {children.map(child => renderNavLink(child, "block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-cyan-50 dark:hover:bg-slate-700"))}
                                         </div>
                                     )}
                                 </div>
                             );
                         }
 
-                        return (
-                            <Link
-                                key={item.id}
-                                href={item.url}
-                                className="text-sm font-semibold text-white hover:text-cyan-200 transition-colors"
-                            >
-                                {item.title}
-                            </Link>
-                        );
+                        return renderNavLink(item, "text-sm font-semibold text-white hover:text-cyan-200 transition-colors");
                     })}
                 </div>
 
@@ -144,11 +149,9 @@ const Navbar: React.FC = () => {
                                     className="w-9 h-9 rounded-full border border-white/40 overflow-hidden hover:scale-105 transition-transform bg-cyan-500"
                                 >
                                     <img
-                                        src={
-                                            auth.user.profile_photo_path
-                                                ? `/storage/${auth.user.profile_photo_path}`
-                                                : `https://ui-avatars.com/api/?name=${encodeURIComponent(auth.user.name)}&background=22d3ee&color=fff`
-                                        }
+                                        src={auth.user.profile_photo_path
+                                            ? `/storage/${auth.user.profile_photo_path}`
+                                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(auth.user.name)}&background=22d3ee&color=fff`}
                                         alt={auth.user.name}
                                         className="w-full h-full object-cover"
                                     />
@@ -156,13 +159,12 @@ const Navbar: React.FC = () => {
 
                                 {isUserMenuOpen && (
                                     <>
-                                        {/* Overlay untuk menutup menu saat klik di luar */}
                                         <div className="fixed inset-0 z-[-1]" onClick={() => setIsUserMenuOpen(false)}></div>
                                         <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl py-2 z-50 border border-gray-100 dark:border-slate-700">
                                             <button onClick={openProfile} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2">
                                                 <Settings size={16} /> Settings
                                             </button>
-                                            <form onSubmit={logout}>
+                                            <form onSubmit={handleLogout}>
                                                 <button type="submit" className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
                                                     <LogOut size={16} /> Logout
                                                 </button>
@@ -190,15 +192,13 @@ const Navbar: React.FC = () => {
                 </button>
             </nav>
 
-            {/* Panggil Komponen Mobile Menu */}
             <MobileMenu
                 isOpen={isOpen}
                 setIsOpen={setIsOpen}
                 auth={auth}
-                logout={logout}
+                logout={handleLogout}
                 openProfile={openProfile}
             />
-
         </header>
     );
 };

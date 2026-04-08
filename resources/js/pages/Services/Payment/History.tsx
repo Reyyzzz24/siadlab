@@ -35,8 +35,17 @@ interface Pembayaran {
 interface Props {
     pembayarans: {
         data: Pembayaran[];
-        links: any[];
+        links: {
+            url: string | null;
+            label: string;
+            active: boolean;
+        }[];
         current_page: number;
+        from: number;
+        to: number;
+        total: number;
+        per_page: number;
+        last_page?: number;
     };
     filters: {
         status?: string;
@@ -148,7 +157,7 @@ export default function History({ pembayarans, filters }: Props) {
                                         updateData(resetParams);
                                     }}
                                 >
-                                  {/*   <FilterItem
+                                    {/*   <FilterItem
                                         label="Status"
                                         value={params.status}
                                         onValueChange={(val) => {
@@ -270,9 +279,9 @@ export default function History({ pembayarans, filters }: Props) {
                                 <p className="text-gray-400 text-sm italic">Tidak ada data ditemukan</p>
                             </div>
                         )}
-                        <div className="mt-6 flex justify-center">
-                            <Pagination links={pembayarans.links} />
-                        </div>
+                        {pembayarans && pembayarans.total > 0 && (
+                            <Pagination meta={pembayarans} />
+                        )}
                     </div>
 
                     {/* --- TAMPILAN DESKTOP: Muncul hanya di layar >= 768px --- */}
@@ -341,9 +350,9 @@ export default function History({ pembayarans, filters }: Props) {
                                 )}
                             </Tbody>
                         </Table>
-                        <div className="mt-6">
-                            <Pagination links={pembayarans.links} />
-                        </div>
+                        {pembayarans && pembayarans.total > 0 && (
+                            <Pagination meta={pembayarans} />
+                        )}
                     </div>
                 </div>
                 <TransactionDetailModal

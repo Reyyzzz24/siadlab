@@ -37,6 +37,7 @@ export interface User {
     name: string;
     email: string;
     avatar?: string;
+    portal_id?: string | number | null;
     profile_photo_path?: string; // Tambahkan ini sesuai database Laravel
     role: 'mahasiswa' | 'petugas' | 'admin' | 'user' | string;
     email_verified_at: string | null;

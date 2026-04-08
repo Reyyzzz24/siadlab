@@ -15,38 +15,32 @@ import Services from './Partials/Services';
 interface Props {
     events: EventItem[];
     draftEvents: EventItem[];
-    heroSections: any[]; 
+    heroSections: any[];
 }
 
 const Home: React.FC<Props> = ({ events, draftEvents, heroSections }) => {
+    // 1. Biarkan default true untuk initial load
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Simulasi loading awal saat komponen pertama kali di-mount
-        const timer = setTimeout(() => setLoading(false), 2000);
+        // 2. Simulasi loading hanya sekali saat komponen di-mount (Hard Refresh)
+        const timer = setTimeout(() => {
+            setLoading(false);
+        }, 2000);
 
-        // Event listener untuk navigasi Inertia
-        const start = router.on('start', () => setLoading(true));
-        const finish = router.on('finish', () => {
-            setTimeout(() => setLoading(false), 1500);
-        });
-
-        return () => {
-            clearTimeout(timer);
-            start();
-            finish();
-        };
+        // Bersihkan timer saat komponen unmount
+        return () => clearTimeout(timer);
     }, []);
 
     return (
         <>
             <Head title="Home - SIADLAB FILKOM UNIDA" />
 
+            {/* Loading screen hanya muncul selama state 'loading' true di awal */}
             {loading && <LoadingScreen />}
 
             <div className={`transition-opacity duration-700 ${loading ? 'opacity-0' : 'opacity-100'}`}>
                 <Navbar />
-
                 <main>
                     <Hero heroSections={heroSections} />
                     <Services />
@@ -54,7 +48,6 @@ const Home: React.FC<Props> = ({ events, draftEvents, heroSections }) => {
                     <About />
                     <Contact />
                 </main>
-
                 <Footer />
             </div>
         </>

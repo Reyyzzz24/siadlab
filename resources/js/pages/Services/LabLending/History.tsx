@@ -29,9 +29,17 @@ interface Peminjaman {
 interface Props {
     peminjamans: {
         data: Peminjaman[];
-        links: any[];
+        links: {
+            url: string | null;
+            label: string;
+            active: boolean;
+        }[];
         current_page: number;
-        last_page: number;
+        from: number;
+        to: number;
+        total: number;
+        per_page: number;
+        last_page?: number;
     };
     filters: { search?: string; status?: string };
 }
@@ -206,9 +214,9 @@ export default function LendingList({ peminjamans, filters }: Props) {
                                 <p className="text-sm text-gray-400 italic">History lab tidak ditemukan</p>
                             </div>
                         )}
-                        <div className="mt-6 flex justify-center">
-                            <Pagination links={peminjamans.links} />
-                        </div>
+                        {peminjamans && peminjamans.total > 0 && (
+                            <Pagination meta={peminjamans} />
+                        )}
                     </div>
 
                     {/* --- TAMPILAN DESKTOP: Table Style (>= 768px) --- */}
@@ -291,9 +299,9 @@ export default function LendingList({ peminjamans, filters }: Props) {
                                 )}
                             </Tbody>
                         </Table>
-                        <div className="mt-6 flex justify-center">
-                            <Pagination links={peminjamans.links} />
-                        </div>
+                        {peminjamans && peminjamans.total > 0 && (
+                            <Pagination meta={peminjamans} />
+                        )}
                     </div>
                 </div>
                 <DetailModal

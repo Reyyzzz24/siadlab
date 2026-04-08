@@ -17,8 +17,11 @@ class StudentController extends Controller
                 ->orWhere('nim', 'like', "%{$request->search}%");
         }
 
+        // Paginate students and preserve query string for links
+        $students = $query->latest()->paginate(10)->withQueryString();
+
         return Inertia::render('Role/Students', [
-            'students' => $query->latest()->get(),
+            'students' => $students,
             'filters' => $request->only(['search']),
         ]);
     }

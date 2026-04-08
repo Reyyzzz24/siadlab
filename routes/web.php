@@ -18,13 +18,17 @@ use App\Http\Controllers\StaffController;
 use App\Http\Controllers\AdministratorController;
 use App\Http\Controllers\AdminPanelController;
 use App\Http\Middleware\EnsureAdminOrPetugas;
-
+use App\Http\Controllers\Auth\SSOController;
 // --- GUEST ROUTES ---
 // Mengarahkan data events ke Home/Index agar bisa dibaca komponen UpcomingEvent
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
+Route::get('/auth/portal', [SSOController::class, 'redirect'])->name('auth.portal');
+Route::get('/auth/portal/callback', [SSOController::class, 'callback'])->name('auth.portal.callback');
+
 // --- AUTHENTICATED ROUTES ---
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('/auth/portal/logout', [SSOController::class, 'logout'])->name('sso.logout');
     // 0. Event Management Routes (Tambahkan Ini)
     Route::post('/events', [EventController::class, 'store'])->name('events.store');
     Route::delete('events/bulk-delete', [EventController::class, 'bulkDestroy'])->name('events.bulk-delete');
@@ -159,6 +163,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/role/users', [UserRoleController::class, 'store'])->name('role.users.store');
         Route::put('/role/users/{id}', [UserRoleController::class, 'update'])->name('role.users.update');
         Route::delete('/role/users/bulk-delete', [UserRoleController::class, 'bulkDestroy'])->name('role.users.bulk-delete');
+        Route::post('/role/users/import', [UserRoleController::class, 'import'])->name('role.users.import');
+        Route::get('/role/users/export', [UserRoleController::class, 'export'])->name('role.users.export');
 
         // Manajemen Event
         Route::get('/home/events', [EventController::class, 'manage'])->name('admin.home.events');

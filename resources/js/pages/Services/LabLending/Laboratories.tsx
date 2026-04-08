@@ -28,16 +28,20 @@ interface Lab {
 interface Props {
     labs: {
         data: Lab[];
-        links: any[];
+        links: { url: string | null; label: string; active: boolean }[];
         current_page: number;
         last_page: number;
+        from: number;
+        to: number;
+        total: number;
+        per_page: number;
     };
     filters?: { search?: string; status?: string };
     auth?: { user?: { role?: string } };
 }
 
 export default function Laboratories({
-    labs = { data: [], links: [], current_page: 1, last_page: 1 },
+    labs = { data: [], links: [], current_page: 1, last_page: 1, from: 0, to: 0, total: 0, per_page: 10 },
     filters = {},
     auth
 }: Props) {
@@ -166,7 +170,7 @@ export default function Laboratories({
 
                     {isAdminOrPetugas && (
                         <div className="w-full md:w-auto">
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full">
                                 <Button variant="outline" size="sm" onClick={() => {
                                     const ws = XLSX.utils.json_to_sheet(labs.data.map(l => ({
                                         id: l.id,
@@ -294,10 +298,8 @@ export default function Laboratories({
                         )}
 
                         {/* Pagination */}
-                        {labs.data.length > 0 && (
-                            <div className="mt-6 flex justify-center">
-                                <Pagination links={labs.links} />
-                            </div>
+                        {labs && labs.total > 0 && (
+                            <Pagination meta={labs} />
                         )}
                     </div>
 
@@ -369,9 +371,9 @@ export default function Laboratories({
                                 )}
                             </Tbody>
                         </Table>
-                        <div className="mt-6 flex justify-center">
-                            <Pagination links={labs.links} />
-                        </div>
+                        {labs && labs.total > 0 && (
+                            <Pagination meta={labs} />
+                        )}
                     </div>
                 </div>
 

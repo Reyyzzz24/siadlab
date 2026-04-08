@@ -80,6 +80,19 @@ export const UserForm = ({ data, setData, errors, onSubmit, isEditMode, availabl
                 </Select>
                 {errors.role && <p className="text-red-500 text-xs">{errors.role}</p>}
             </div>
+
+            {data.role === 'mahasiswa' && (
+                <div className="space-y-1">
+                    <Label htmlFor="nim">NIM</Label>
+                    <Input
+                        id="nim"
+                        value={data.nim || ''}
+                        onChange={e => setData('nim', e.target.value)}
+                        className={errors.nim ? "border-red-500" : ""}
+                    />
+                    {errors.nim && <p className="text-red-500 text-xs">{errors.nim}</p>}
+                </div>
+            )}
         </form>
     );
 };

@@ -3,6 +3,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { NoSymbolIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { Table, Thead, Tbody, Tr, Th, Td } from '@/components/ui/table';
+import { Pagination } from '@/components/Pagination';
 import { SearchInput } from '@/components/SearchInput';
 import { ConfirmDeleteModal } from '@/components/ui/alert';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
@@ -23,7 +24,7 @@ interface Admin {
 }
 
 interface Props {
-    admins: Admin[];
+    admins: any;
     filters?: { search?: string };
     auth: { user: { role: string } };
 }
@@ -32,7 +33,13 @@ export default function Administrators({ admins = [], filters = {}, auth }: Prop
     useFlashMessages();
     const [page, setPage] = useState(1);
     const perPage = 10;
-    const totalData = admins.length;
+    const items: Admin[] = Array.isArray(admins) ? admins : (admins?.data ?? []);
+    const links = !Array.isArray(admins) && admins?.links ? admins.links : [];
+    const meta = !Array.isArray(admins) && admins?.meta ? admins.meta : null;
+    const totalData = meta ? meta.total : items.length;
+    const currentPage = meta ? meta.current_page : parseInt(new URLSearchParams(window.location.search).get('page') || '1', 10);
+    const currentPerPage = meta ? meta.per_page : perPage;
+    const indexBase = (currentPage - 1) * currentPerPage;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [params, setParams] = useState({ search: filters?.search || '' });
@@ -128,10 +135,11 @@ export default function Administrators({ admins = [], filters = {}, auth }: Prop
                                 <input
                                     type="checkbox"
                                     className="rounded border-gray-300"
-                                    onChange={(e) => setSelectedIds(e.target.checked ? admins.map(a => a.id) : [])}
-                                    checked={selectedIds.length === admins.length && admins.length > 0}
+                                    onChange={(e) => setSelectedIds(e.target.checked ? items.map((a: Admin) => a.id) : [])}
+                                    checked={selectedIds.length === items.length && items.length > 0}
                                 />
                             </Th>
+                            <Th center>No</Th>
                             <Th>No. Induk</Th>
                             <Th>Nama</Th>
                             <Th>Jabatan</Th>
@@ -142,8 +150,8 @@ export default function Administrators({ admins = [], filters = {}, auth }: Prop
                         </Tr>
                     </Thead>
                     <Tbody>
-                        {admins.length > 0 ? (
-                            admins.map((admin) => (
+                        {items.length > 0 ? (
+                            items.map((admin: Admin) => (
                                 <Tr key={admin.id}>
                                     <Td className="text-center">
                                         <input
@@ -153,6 +161,7 @@ export default function Administrators({ admins = [], filters = {}, auth }: Prop
                                             onChange={() => setSelectedIds(prev => prev.includes(admin.id) ? prev.filter(i => i !== admin.id) : [...prev, admin.id])}
                                         />
                                     </Td>
+                                    <Td center>{indexBase + items.indexOf(admin) + 1}</Td>
                                     <Td>
                                         {admin.no_induk}
                                     </Td>
@@ -185,7 +194,7 @@ export default function Administrators({ admins = [], filters = {}, auth }: Prop
                             ))
                         ) : (
                             <Tr>
-                                <Td colSpan={5} className="text-center py-20">
+                                <Td colSpan={8} className="text-center py-20">
                                     <div className="flex flex-col items-center text-gray-400">
                                         <NoSymbolIcon className="w-10 h-10 mb-2" />
                                         <p>Belum ada data administrator</p>
@@ -195,6 +204,9 @@ export default function Administrators({ admins = [], filters = {}, auth }: Prop
                         )}
                     </Tbody>
                 </Table>
+                {admins && admins.total > 0 && (
+                    <Pagination meta={admins} />
+                )}
             </div>
             <Modal
                 isOpen={isModalOpen}

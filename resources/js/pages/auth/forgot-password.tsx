@@ -90,7 +90,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                         </h2>
 
                         <p className="mb-10 text-gray-600 dark:text-zinc-400">
-                            Masukkan email yang terdaftar untuk menerima instruksi reset password.
+                            Masukkan NIM / No. Induk / Email yang terdaftar untuk menerima instruksi reset password.
                         </p>
 
                         {status && (
@@ -103,15 +103,15 @@ export default function ForgotPassword({ status }: { status?: string }) {
                             {({ processing, errors }) => (
                                 <>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-zinc-300">Email Address</Label>
+                                        <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-zinc-300">NIM / No. Induk / Email</Label>
                                         <Input
                                             id="email"
-                                            type="email"
+                                            type="text"
                                             name="email"
                                             autoComplete="off"
                                             autoFocus
                                             required
-                                            placeholder="nama@example.com"
+                                            placeholder="Masukkan NIM, No. Induk, atau Email"
                                             className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-yellow-400"
                                         />
                                         <InputError message={errors.email} />

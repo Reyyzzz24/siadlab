@@ -24,9 +24,17 @@ interface Tagihan { id: number; mahasiswa: Mahasiswa; jenis_tagihan: string[] | 
 interface Props {
     tagihans: {
         data: Tagihan[];
-        links: any[];
+        links: {
+            url: string | null;
+            label: string;
+            active: boolean;
+        }[];
         current_page: number;
-        last_page: number;
+        from: number;
+        to: number;
+        total: number;
+        per_page: number;
+        last_page?: number;
     };
     kategori_spp: KategoriSpp[];
     tahun_masuk_list: string[];
@@ -214,7 +222,7 @@ export default function Invoice({ tagihans, kategori_spp, tahun_masuk_list, filt
                         <Tr>
                             <Th center className="w-12">No</Th>
                             <Th>Mahasiswa</Th>
-                            <Th>Kelas</Th>
+                            <Th>Angkatan</Th>
                             <Th>Jenis Tagihan</Th>
                             <Th>Nominal & Tempo</Th>
                             <Th>Status</Th>
@@ -231,10 +239,7 @@ export default function Invoice({ tagihans, kategori_spp, tahun_masuk_list, filt
                                         <div className="text-xs text-gray-400">{t.mahasiswa.nim}</div>
                                     </Td>
                                     <Td>
-                                        <div className='font-medium'>{t.mahasiswa.kelas}</div>
-                                        <div className="text-[10px] text-gray-400 uppercase">
-                                            Angkatan {t.mahasiswa.tahun_masuk}
-                                        </div>
+                                        {t.mahasiswa.tahun_masuk}
                                     </Td>
                                     <Td>
                                         <div className="flex flex-wrap gap-1">
@@ -290,9 +295,9 @@ export default function Invoice({ tagihans, kategori_spp, tahun_masuk_list, filt
                         )}
                     </Tbody>
                 </Table>
-                <div className="mt-6">
-                    <Pagination links={tagihans.links} />
-                </div>
+                {tagihans && tagihans.total > 0 && (
+                    <Pagination meta={tagihans} />
+                )}
 
                 {/* Shared Modal */}
                 <Modal

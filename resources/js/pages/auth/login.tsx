@@ -11,6 +11,7 @@ import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 import { motion } from 'framer-motion';
 import AppLogoIcon from '@/components/app-logo-icon';
+import { ShieldCheck } from 'lucide-react';
 
 interface LoginProps {
     status?: string;
@@ -105,27 +106,30 @@ export default function Login({
                             {...store.form()}
                             resetOnSuccess={['password']}
                             className="space-y-6"
-                            onSubmit={() => console.log('Login form submit triggered')}
                         >
                             {({ processing, errors }) => (
                                 <>
                                     <div className="space-y-5">
-                                        {/* Email Field */}
                                         <div className="grid gap-2">
-                                            <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-zinc-300">Email address</Label>
+                                            <Label htmlFor="login" className="text-sm font-medium text-gray-700 dark:text-zinc-300">
+                                                NIM / No. Induk / Email
+                                            </Label>
                                             <div className="relative">
                                                 <Input
-                                                    id="email"
-                                                    type="email"
-                                                    name="email"
+                                                    id="login"
+                                                    type="text"
+                                                    name="login" 
                                                     required
                                                     autoFocus
-                                                    placeholder="Masukkan email Anda"
+                                                    placeholder="Masukkan NIM, No. Induk, atau Email"
                                                     className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-yellow-400"
                                                 />
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 transform text-gray-400">@</span>
+                                                {/* Opsional: Ganti icon @ dengan icon User jika ingin lebih relevan */}
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 transform text-gray-400">
+                                                    <ShieldCheck className="h-4 w-4" />
+                                                </span>
                                             </div>
-                                            <InputError message={errors.email} />
+                                            <InputError message={errors.login} />
                                         </div>
 
                                         {/* Password Field */}
@@ -162,7 +166,6 @@ export default function Login({
                                                 className="flex w-full justify-center rounded-xl px-4 py-4 text-lg transition duration-150 ease-in-out"
                                                 variant="yellow"
                                                 disabled={!!processing}
-                                                onClick={() => console.log('Sign in clicked')}
                                             >
                                                 {processing && <Spinner className="mr-2" />}
                                                 Sign in
@@ -176,6 +179,13 @@ export default function Login({
                                             Sign up
                                         </TextLink>
                                     </p>
+                                    <a
+                                        href="/auth/portal"
+                                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                                    >
+                                        <ShieldCheck className="h-4 w-4" />
+                                        Masuk dengan Portal SSO
+                                    </a>
                                 </>
                             )}
                         </Form>

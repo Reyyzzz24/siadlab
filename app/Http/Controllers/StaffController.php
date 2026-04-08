@@ -18,9 +18,12 @@ class StaffController extends Controller
                 ->orWhere('email', 'like', "%{$request->search}%");
         }
 
+        // Paginate staffs and preserve query string for links
+        $staffs = $query->latest()->paginate(10)->withQueryString();
+
         return Inertia::render('Role/Staff', [
             // Kuncinya ada di sini: Harus 'staffs' agar terbaca di React
-            'staffs' => $query->latest()->get(),
+            'staffs' => $staffs,
             'filters' => $request->only(['search']),
         ]);
     }

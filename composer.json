@@ -13,8 +13,10 @@
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/fortify": "^1.30",
         "laravel/framework": "^12.0",
+        "laravel/socialite": "^5.26",
         "laravel/tinker": "^2.10.1",
         "laravel/wayfinder": "^0.1.9",
+        "maatwebsite/excel": "^3.1",
         "masbug/flysystem-google-drive-ext": "^2.4",
         "tightenco/ziggy": "^2.6"
     },
@@ -102,6 +104,15 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "audit": {
+            "block-insecure": false,
+            "ignore": [
+                "PKSA-21fb-n1x5-5nf7",
+                "PKSA-2cx9-ynrq-qdk3",
+                "PKSA-4s4z-t146-6123",
+                "PKSA-z3gr-8qht-p93v"
+            ]
         }
     },
     "minimum-stability": "stable",

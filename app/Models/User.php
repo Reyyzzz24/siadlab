@@ -22,7 +22,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',                // TAMBAHKAN INI
-        'profile_photo_path'
+        'profile_photo_path',
+        'portal_id',
     ];
 
     /**

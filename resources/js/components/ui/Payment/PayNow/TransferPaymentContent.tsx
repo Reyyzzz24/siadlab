@@ -19,9 +19,9 @@ export const TransferPaymentContent = ({
     <div className="space-y-4">
         <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-xl font-mono text-sm dark:text-gray-300 border border-dashed border-gray-300 dark:border-gray-600 text-center">
             <p className="text-gray-500 dark:text-gray-400 text-[10px] uppercase mb-1">Rekening Tujuan</p>
-            <span className="text-lg font-bold block text-gray-800 dark:text-gray-100">BANK ABC</span>
-            <span className="text-xl tracking-widest block my-1 text-blue-600 dark:text-blue-400">123456789</span>
-            <span className="block">a.n. Universitas</span>
+            <span className="text-lg font-bold block text-gray-800 dark:text-gray-100">BANK SYARIAH INDONESIA</span>
+            <span className="text-xl tracking-widest block my-1 text-blue-600 dark:text-blue-400">7253703126</span>
+            <span className="block">a.n. Abdullah</span>
         </div>
 
         <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">

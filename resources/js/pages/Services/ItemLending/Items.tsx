@@ -30,9 +30,17 @@ interface Barang {
 interface Props {
     barangs: {
         data: Barang[];
-        links: any[];
+        links: {
+            url: string | null;
+            label: string;
+            active: boolean;
+        }[];
         current_page: number;
-        last_page: number;
+        from: number;
+        to: number;
+        total: number;
+        per_page: number;
+        last_page?: number;
     };
     filters: {
         search?: string;
@@ -45,7 +53,7 @@ interface Props {
     auth: { user: { role: string } };
 }
 
-export default function Items({ barangs = { data: [], links: [], current_page: 1, last_page: 1 }, filters = {}, auth }: Props) {
+export default function Items({ barangs = { data: [], links: [], current_page: 1, from: 0, to: 0, total: 0, per_page: 10, last_page: 1 }, filters = {}, auth }: Props) {
     useFlashMessages();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -251,7 +259,7 @@ export default function Items({ barangs = { data: [], links: [], current_page: 1
                     {/* Button Tambah: Akan pindah ke bawah Search di mobile */}
                     {isAdminOrPetugas && (
                         <div className="w-full md:w-auto">
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full">
                                 <Button variant="outline" size="sm" onClick={() => {
                                     const ws = XLSX.utils.json_to_sheet(barangs.data.map(b => ({
                                         idbarang: b.idbarang,
@@ -306,7 +314,7 @@ export default function Items({ barangs = { data: [], links: [], current_page: 1
                                     Import Excel
                                 </Button>
 
-                                <Button variant="default" size="sm" onClick={() => { reset(); setIsEditMode(false); setIsModalOpen(true); }} className="w-full md:w-auto justify-center"> 
+                                <Button variant="default" size="sm" onClick={() => { reset(); setIsEditMode(false); setIsModalOpen(true); }} className="w-full md:w-auto justify-center">
                                     <PlusIcon className="w-4 h-4 mr-2" /> Tambah Barang
                                 </Button>
                             </div>
@@ -470,9 +478,9 @@ export default function Items({ barangs = { data: [], links: [], current_page: 1
                                 )}
                             </Tbody>
                         </Table>
-                        <div className="mt-6 flex justify-center">
-                            <Pagination links={barangs.links} />
-                        </div>
+                        {barangs && barangs.total > 0 && (
+                            <Pagination meta={barangs} />
+                        )}
                     </div>
                 </div>
 

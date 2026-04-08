@@ -4,6 +4,7 @@ import { Head, useForm, router } from '@inertiajs/react';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { NoSymbolIcon } from '@heroicons/react/24/outline';
 import { Table, Thead, Tbody, Tr, Th, Td } from '@/components/ui/table';
+import { Pagination } from '@/components/Pagination';
 import { SearchInput } from '@/components/SearchInput';
 import { ConfirmDeleteModal } from '@/components/ui/alert';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
@@ -23,7 +24,7 @@ interface Student {
 }
 
 interface Props {
-    students: Student[];
+    students: any;
     filters?: { search?: string };
     auth: { user: { role: string } };
 }
@@ -33,8 +34,15 @@ export default function Students({ students = [], filters = {}, auth }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [params, setParams] = useState({ search: filters?.search || '' });
+    const perPage = 10;
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const isAdminOrPetugas = ['admin', 'petugas'].includes(auth.user.role);
+    const items: Student[] = Array.isArray(students) ? students : (students?.data ?? []);
+    const links = !Array.isArray(students) && students?.links ? students.links : [];
+    const meta = !Array.isArray(students) && students?.meta ? students.meta : null;
+    const currentPage = meta ? meta.current_page : parseInt(new URLSearchParams(window.location.search).get('page') || '1', 10);
+    const currentPerPage = meta ? meta.per_page : perPage;
+    const indexBase = (currentPage - 1) * currentPerPage;
 
     const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
         id: null as number | null,
@@ -125,10 +133,11 @@ export default function Students({ students = [], filters = {}, auth }: Props) {
                             <Th className="w-12">
                                 <input
                                     type="checkbox"
-                                    onChange={(e) => setSelectedIds(e.target.checked ? students.map(s => s.id) : [])}
-                                    checked={selectedIds.length === students.length && students.length > 0}
+                                    onChange={(e) => setSelectedIds(e.target.checked ? items.map((s: Student) => s.id) : [])}
+                                    checked={selectedIds.length === items.length && items.length > 0}
                                 />
                             </Th>
+                            <Th center>No</Th>
                             <Th>NIM</Th>
                             <Th>Nama</Th>
                             <Th>Prodi</Th>
@@ -140,8 +149,8 @@ export default function Students({ students = [], filters = {}, auth }: Props) {
                         </Tr>
                     </Thead>
                     <Tbody>
-                        {students.length > 0 ? (
-                            students.map((s) => (
+                        {items.length > 0 ? (
+                            items.map((s: Student) => (
                                 <Tr key={s.id}>
                                     <Td>
                                         <input
@@ -150,6 +159,7 @@ export default function Students({ students = [], filters = {}, auth }: Props) {
                                             onChange={() => setSelectedIds(prev => prev.includes(s.id) ? prev.filter(i => i !== s.id) : [...prev, s.id])}
                                         />
                                     </Td>
+                                    <Td center>{indexBase + items.indexOf(s) + 1}</Td>
                                     <Td>{s.nim}</Td>
                                     <Td className="font-medium">{s.nama}</Td>
                                     <Td>{s.program_studi}</Td>
@@ -173,7 +183,7 @@ export default function Students({ students = [], filters = {}, auth }: Props) {
                             ))
                         ) : (
                             <Tr>
-                                <Td colSpan={8} className="text-center py-20">
+                                <Td colSpan={10} className="text-center py-20">
                                     <div className="flex flex-col items-center text-gray-400">
                                         <NoSymbolIcon className="w-10 h-10 mb-2" />
                                         <p>Mahasiswa tidak ditemukan</p>
@@ -183,6 +193,9 @@ export default function Students({ students = [], filters = {}, auth }: Props) {
                         )}
                     </Tbody>
                 </Table>
+                {students && students.total > 0 && (
+                    <Pagination meta={students} />
+                )}
             </div>
             <Modal
                 isOpen={isModalOpen}

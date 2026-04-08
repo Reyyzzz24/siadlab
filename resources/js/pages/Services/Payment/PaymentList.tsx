@@ -36,14 +36,23 @@ interface Pembayaran {
     bukti_bayar?: string;
     keterangan?: string;
     created_at: string;
-    alasan?: string; 
+    alasan?: string;
 }
 
 interface Props {
     payments: {
         data: Pembayaran[];
-        links: any[];
+        links: {
+            url: string | null;
+            label: string;
+            active: boolean;
+        }[];
         current_page: number;
+        from: number;
+        to: number;
+        total: number;
+        per_page: number;
+        last_page?: number;
     };
     filters: {
         status?: string;
@@ -363,9 +372,9 @@ export default function PaymentList({ payments, filters }: Props) {
                         )}
                     </Tbody>
                 </Table>
-                <div className="mt-6">
-                    <Pagination links={payments.links} />
-                </div>
+                {payments && payments.total > 0 && (
+                    <Pagination meta={payments} />
+                )}
             </div>
 
             {/* --- MODALS SECTION --- */}

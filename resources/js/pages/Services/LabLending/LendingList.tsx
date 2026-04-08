@@ -30,9 +30,17 @@ interface Peminjaman {
 interface Props {
     peminjamans: {
         data: Peminjaman[];
-        links: any[];
+        links: {
+            url: string | null;
+            label: string;
+            active: boolean;
+        }[];
         current_page: number;
-        last_page: number;
+        from: number;
+        to: number;
+        total: number;
+        per_page: number;
+        last_page?: number;
     };
     filters: {
         status?: string;
@@ -248,9 +256,9 @@ export default function LendingList({ peminjamans, filters }: Props) {
                         )}
                     </Tbody>
                 </Table>
-                <div className="mt-6 flex justify-center">
-                    <Pagination links={peminjamans.links} />
-                </div>
+                {peminjamans && peminjamans.total > 0 && (
+                    <Pagination meta={peminjamans} />
+                )}
             </div>
             <RejectReasonModal isOpen={isRejectModalOpen} onClose={() => setIsRejectModalOpen(false)} onSubmit={submitRejectWithReason} />
         </AppLayout>
