@@ -24,7 +24,12 @@ SIADLAB adalah sistem informasi berbasis web yang dirancang untuk mengintegrasik
 
 ## 💻 Cara Instalasi
 
-1. **Clone Repository**
    ```bash
    git clone https://github.com/Reyyzzz24/siadlab/
    cd siadlab
+   composer install
+   npm install
+   php artisan key:generate
+   php artisan migrate
+   composer dev
+
